@@ -1,7 +1,9 @@
-import {API_ROOT_URL} from '../constants';
+import TableLoader from './loaders/Table';
+
+import {DATA_API_ROOT, GOSPEL_DATE} from '../constants';
 import useIsVisible from '../hooks/useIsVisible';
 import useStickySWR from '../hooks/useStickySWR';
-import {fetcher} from '../utils/commonFunctions';
+import {fetcher, getStatistic, retry} from '../utils/commonFunctions';
 
 import classnames from 'classnames';
 import {useState, useRef, lazy, Suspense} from 'react';
@@ -9,17 +11,19 @@ import {Helmet} from 'react-helmet';
 import {useLocation} from 'react-router-dom';
 import {useLocalStorage, useSessionStorage, useWindowSize} from 'react-use';
 
-const Actions = lazy(() => import('./Actions'));
-const Footer = lazy(() => import('./Footer'));
-const Level = lazy(() => import('./Level'));
-const LevelVaccinated = lazy(() => import('./LevelVaccinated'));
-const MapExplorer = lazy(() => import('./MapExplorer'));
-const MapSwitcher = lazy(() => import('./MapSwitcher'));
-const Minigraphs = lazy(() => import('./Minigraphs'));
-const Search = lazy(() => import('./Search'));
-const StateHeader = lazy(() => import('./StateHeader'));
-const Table = lazy(() => import('./Table'));
-const TimeseriesExplorer = lazy(() => import('./TimeseriesExplorer'));
+const Actions = lazy(() => retry(() => import('./Actions')));
+const Footer = lazy(() => retry(() => import('./Footer')));
+const Level = lazy(() => retry(() => import('./Level')));
+const LevelVaccinated = lazy(() => retry(() => import('./LevelVaccinated')));
+const MapExplorer = lazy(() => retry(() => import('./MapExplorer')));
+const MapSwitcher = lazy(() => retry(() => import('./MapSwitcher')));
+const Minigraphs = lazy(() => retry(() => import('./Minigraphs')));
+const Search = lazy(() => retry(() => import('./Search')));
+const StateHeader = lazy(() => retry(() => import('./StateHeader')));
+const Table = lazy(() => retry(() => import('./Table')));
+const TimeseriesExplorer = lazy(() =>
+  retry(() => import('./TimeseriesExplorer'))
+);
 
 function Home() {
   const [regionHighlighted, setRegionHighlighted] = useState({
@@ -37,7 +41,7 @@ function Home() {
   const location = useLocation();
 
   const {data: timeseries} = useStickySWR(
-    `${API_ROOT_URL}/timeseries.min.json`,
+    `${DATA_API_ROOT}/timeseries.min.json`,
     fetcher,
     {
       revalidateOnMount: true,
@@ -46,7 +50,7 @@ function Home() {
   );
 
   const {data} = useStickySWR(
-    `${API_ROOT_URL}/data${date ? `-${date}` : ''}.min.json`,
+    `${DATA_API_ROOT}/data${date ? `-${date}` : ''}.min.json`,
     fetcher,
     {
       revalidateOnMount: true,
@@ -57,6 +61,10 @@ function Home() {
   const homeRightElement = useRef();
   const isVisible = useIsVisible(homeRightElement);
   const {width} = useWindowSize();
+
+  const hideDistrictData = date !== '' && date < GOSPEL_DATE;
+  const hideVaccinated =
+    getStatistic(data?.['TT'], 'total', 'vaccinated') === 0;
 
   return (
     <>
@@ -75,40 +83,51 @@ function Home() {
               <Search />
             </Suspense>
 
-            {timeseries && (
-              <Suspense fallback={<div style={{minHeight: '56px'}} />}>
-                <Actions
-                  {...{
-                    setDate,
-                    dates: Object.keys(timeseries['TT']?.dates).reverse(),
-                    date,
-                  }}
-                />
-              </Suspense>
-            )}
+            {!data && !timeseries && <div style={{height: '60rem'}} />}
+
+            <>
+              {!timeseries && <div style={{minHeight: '61px'}} />}
+              {timeseries && (
+                <Suspense fallback={<div style={{minHeight: '61px'}} />}>
+                  <Actions
+                    {...{
+                      date,
+                      setDate,
+                      dates: Object.keys(timeseries['TT']?.dates),
+                    }}
+                  />
+                </Suspense>
+              )}
+            </>
           </div>
 
           <div style={{position: 'relative', marginTop: '1rem'}}>
             {data && (
               <Suspense fallback={<div style={{height: '50rem'}} />}>
-                {width > 769 && (
+                {width > 769 && !expandTable && (
                   <MapSwitcher {...{mapStatistic, setMapStatistic}} />
                 )}
                 <Level data={data['TT']} />
               </Suspense>
             )}
 
-            {timeseries && (
-              <Suspense fallback={<div style={{height: '50rem'}} />}>
-                <Minigraphs timeseries={timeseries['TT']?.dates} {...{date}} />
-              </Suspense>
-            )}
+            <>
+              {!timeseries && <div style={{height: '107px'}} />}
+              {timeseries && (
+                <Suspense fallback={<div style={{height: '107px'}} />}>
+                  <Minigraphs
+                    timeseries={timeseries['TT']?.dates}
+                    {...{date}}
+                  />
+                </Suspense>
+              )}
+            </>
           </div>
 
-          {data && <LevelVaccinated data={data['TT']} />}
+          {!hideVaccinated && <LevelVaccinated data={data['TT']} />}
 
           {data && (
-            <Suspense fallback={<div />}>
+            <Suspense fallback={<TableLoader />}>
               <Table
                 {...{
                   data,
@@ -116,6 +135,8 @@ function Home() {
                   setRegionHighlighted,
                   expandTable,
                   setExpandTable,
+                  hideDistrictData,
+                  hideVaccinated,
                 }}
               />
             </Suspense>
@@ -125,6 +146,7 @@ function Home() {
         <div
           className={classnames('home-right', {expanded: expandTable})}
           ref={homeRightElement}
+          style={{minHeight: '2rem'}}
         >
           {(isVisible || location.hash) && (
             <>
@@ -132,24 +154,26 @@ function Home() {
                 <div
                   className={classnames('map-container', {
                     expanded: expandTable,
+                    stickied:
+                      anchor === 'mapexplorer' || (expandTable && width > 769),
                   })}
                 >
                   <Suspense fallback={<div style={{height: '50rem'}} />}>
                     <StateHeader data={data['TT']} stateCode={'TT'} />
                     <MapExplorer
                       stateCode="TT"
-                      {...{data}}
+                      {...{date, data}}
                       {...{mapStatistic, setMapStatistic}}
                       {...{regionHighlighted, setRegionHighlighted}}
                       {...{anchor, setAnchor}}
-                      {...{expandTable}}
+                      {...{expandTable, hideDistrictData}}
                     />
                   </Suspense>
                 </div>
               )}
 
               {timeseries && (
-                <Suspense fallback={<div />}>
+                <Suspense fallback={<div style={{height: '50rem'}} />}>
                   <TimeseriesExplorer
                     stateCode="TT"
                     {...{
@@ -160,6 +184,7 @@ function Home() {
                       anchor,
                       setAnchor,
                       expandTable,
+                      hideVaccinated,
                     }}
                   />
                 </Suspense>

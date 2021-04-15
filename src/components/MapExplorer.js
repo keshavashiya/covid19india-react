@@ -11,13 +11,19 @@ import {
   STATISTIC_CONFIGS,
   UNKNOWN_DISTRICT_KEY,
 } from '../constants';
-import {formatNumber, getStatistic, capitalize} from '../utils/commonFunctions';
+import {
+  formatNumber,
+  getStatistic,
+  capitalize,
+  retry,
+} from '../utils/commonFunctions';
 
 import {
-  DotFillIcon,
   ArrowLeftIcon,
+  DotFillIcon,
+  PinIcon,
   OrganizationIcon,
-} from '@primer/octicons-v2-react';
+} from '@primer/octicons-react';
 import classnames from 'classnames';
 import equal from 'fast-deep-equal';
 import produce from 'immer';
@@ -37,7 +43,7 @@ import {animated, useSpring} from 'react-spring';
 import {useSwipeable} from 'react-swipeable';
 import {useWindowSize} from 'react-use';
 
-const MapVisualizer = lazy(() => import('./MapVisualizer'));
+const MapVisualizer = lazy(() => retry(() => import('./MapVisualizer')));
 
 function MapExplorer({
   stateCode: mapCode = 'TT',
@@ -48,7 +54,8 @@ function MapExplorer({
   setRegionHighlighted,
   anchor,
   setAnchor,
-  expandTable,
+  expandTable = false,
+  hideDistrictData = false,
 }) {
   const {t} = useTranslation();
   const mapExplorerRef = useRef();
@@ -168,39 +175,63 @@ function MapExplorer({
     return styles;
   }, []);
 
+  const perMillion = mapViz === MAP_VIZS.CHOROPLETH;
+
+  const getMapStatistic = useCallback(
+    (data) =>
+      getStatistic(data, 'total', mapStatistic, {perMillion: perMillion}),
+    [mapStatistic, perMillion]
+  );
+
   const spring = useSpring({
-    total: getStatistic(hoveredRegion, 'total', mapStatistic),
+    total: getMapStatistic(hoveredRegion),
     config: {tension: 250, ...SPRING_CONFIG_NUMBERS},
   });
 
+  const handleStatisticChange = (direction) => {
+    const currentIndex = PRIMARY_STATISTICS.indexOf(mapStatistic);
+    const toIndex =
+      (PRIMARY_STATISTICS.length + currentIndex + direction) %
+      PRIMARY_STATISTICS.length;
+    setMapStatistic(PRIMARY_STATISTICS[toIndex]);
+  };
+
   const swipeHandlers = useSwipeable({
-    onSwipedRight: () => {
-      const currentIndex = PRIMARY_STATISTICS.indexOf(mapStatistic);
-      const toIndex =
-        currentIndex > 0 ? currentIndex - 1 : PRIMARY_STATISTICS.length - 1;
-      setMapStatistic(PRIMARY_STATISTICS[toIndex]);
-    },
-    onSwipedLeft: () => {
-      const currentIndex = PRIMARY_STATISTICS.indexOf(mapStatistic);
-      const toIndex =
-        currentIndex < PRIMARY_STATISTICS.length - 1 ? currentIndex + 1 : 0;
-      setMapStatistic(PRIMARY_STATISTICS[toIndex]);
-    },
+    onSwipedLeft: handleStatisticChange.bind(this, 1),
+    onSwipedRight: handleStatisticChange.bind(this, -1),
   });
 
   const statisticConfig = STATISTIC_CONFIGS[mapStatistic];
+
+  const isDistrictView = mapView === MAP_VIEWS.DISTRICTS && !hideDistrictData;
+
+  const stickied = anchor === 'mapexplorer' || (expandTable && width > 769);
 
   return (
     <div
       className={classnames(
         'MapExplorer',
-        {stickied: anchor === 'mapexplorer'},
+        {stickied},
         {
           hidden:
-            anchor && (!expandTable || width < 769) && anchor !== 'mapexplorer',
+            anchor && anchor !== 'mapexplorer' && (!expandTable || width < 769),
         }
       )}
     >
+      <div
+        className={classnames('anchor', 'fadeInUp', {
+          stickied,
+        })}
+        style={{
+          display: width < 769 || (width > 769 && expandTable) ? 'none' : '',
+        }}
+        onClick={
+          setAnchor &&
+          setAnchor.bind(this, anchor === 'mapexplorer' ? null : 'mapexplorer')
+        }
+      >
+        <PinIcon />
+      </div>
       <div className="panel" ref={panelRef}>
         <div className="panel-left fadeInUp" style={trail[0]}>
           <h2 className={classnames(mapStatistic)}>
@@ -212,7 +243,7 @@ function MapExplorer({
           {regionHighlighted.stateCode && (
             <h1 className={classnames('district', mapStatistic)}>
               <animated.div>
-                {spring.total.interpolate((total) =>
+                {spring.total.to((total) =>
                   formatNumber(
                     total,
                     statisticConfig.format !== 'short'
@@ -222,7 +253,9 @@ function MapExplorer({
                   )
                 )}
               </animated.div>
-              <span>{t(capitalize(statisticConfig.displayName))}</span>
+              <span>{`${t(capitalize(statisticConfig.displayName))}${
+                perMillion ? ` ${t('per 10 lakh people')}` : ''
+              }`}</span>
             </h1>
           )}
         </div>
@@ -253,7 +286,7 @@ function MapExplorer({
                 <div className="divider" />
                 <div
                   className={classnames('boundary fadeInUp', {
-                    'is-highlighted': mapView === MAP_VIEWS.DISTRICTS,
+                    'is-highlighted': isDistrictView,
                   })}
                   onClick={handleDistrictClick.bind(this)}
                   style={trail[3]}
@@ -313,10 +346,11 @@ function MapExplorer({
             }
           >
             <MapVisualizer
-              {...{mapCode, mapView, mapViz}}
+              {...{mapCode, isDistrictView, mapViz}}
               data={mapData}
               {...{regionHighlighted, setRegionHighlighted}}
               statistic={mapStatistic}
+              getStatistic={getMapStatistic}
             ></MapVisualizer>
           </Suspense>
         )}
@@ -333,6 +367,8 @@ const isEqual = (prevProps, currProps) => {
   } else if (!equal(prevProps.mapStatistic, currProps.mapStatistic)) {
     return false;
   } else if (!equal(prevProps.anchor, currProps.anchor)) {
+    return false;
+  } else if (!equal(prevProps.hideDistrictData, currProps.hideDistrictData)) {
     return false;
   } else if (!equal(prevProps.expandTable, currProps.expandTable)) {
     return false;

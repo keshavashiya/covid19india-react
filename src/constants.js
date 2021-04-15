@@ -1,5 +1,6 @@
-export const API_ROOT_URL = 'https://api.covid19india.org/v4/min';
-// export const API_ROOT_URL = 'http://127.0.0.1:8080/v4/min';
+// export const API_DOMAIN = 'http://127.0.0.1:8080';
+export const API_DOMAIN = 'https://api.covid19india.org';
+export const DATA_API_ROOT = `${API_DOMAIN}/v4/min`;
 
 export const LOCALE_SHORTHANDS = {
   english: 'en-US',
@@ -96,6 +97,7 @@ export const STATISTIC_DEFINITIONS = {
       normalizeByKey: 'tested',
       multiplyFactor: 100,
     },
+    color: '#fd7e14',
     hideDelta: true,
   },
   population: {
@@ -143,6 +145,7 @@ export const TIMESERIES_STATISTICS = [
   ...PRIMARY_STATISTICS,
   'tested',
   'vaccinated',
+  // 'tpr',
 ];
 
 export const UPDATES_COUNT = 5;
@@ -158,6 +161,8 @@ export const TESTED_LOOKBACK_DAYS = 7;
 export const UNASSIGNED_STATE_CODE = 'UN';
 
 export const UNKNOWN_DISTRICT_KEY = 'Unknown';
+
+export const GOSPEL_DATE = '2020-04-26';
 
 export const ISO_DATE_REGEX = /^\d{4}-([0]\d|1[0-2])-([0-2]\d|3[01])$/g;
 

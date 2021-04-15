@@ -3,9 +3,7 @@ import {
   NAN_STATISTICS,
   PRIMARY_STATISTICS,
   STATISTIC_CONFIGS,
-  TIMESERIES_STATISTICS,
 } from '../constants';
-import {useResizeObserver} from '../hooks/useResizeObserver';
 import {
   capitalize,
   formatNumber,
@@ -26,6 +24,7 @@ import {differenceInDays} from 'date-fns';
 import equal from 'fast-deep-equal';
 import {memo, useCallback, useEffect, useRef, useMemo, useState} from 'react';
 import {useTranslation} from 'react-i18next';
+import {useMeasure} from 'react-use';
 
 // Chart margins
 const margin = {top: 15, right: 35, bottom: 25, left: 25};
@@ -34,6 +33,7 @@ const yScaleShrinkFactor = 0.7;
 const numTicksX = (width) => (width < 480 ? 4 : 6);
 
 function Timeseries({
+  statistics,
   timeseries,
   dates,
   endDate,
@@ -44,24 +44,7 @@ function Timeseries({
 }) {
   const {t} = useTranslation();
   const refs = useRef([]);
-
-  const wrapperRef = useRef();
-  const dimensions = useResizeObserver(wrapperRef);
-
-  const statistics = useMemo(
-    () =>
-      TIMESERIES_STATISTICS.filter(
-        (statistic) => chartType === 'delta' || statistic !== 'tpr'
-      ),
-    [chartType]
-  );
-
-  // Dimensions
-  const {width, height} = dimensions ||
-    wrapperRef.current?.getBoundingClientRect() || {
-      width: margin.left + margin.right,
-      height: margin.bottom + margin.top,
-    };
+  const [wrapperRef, {width, height}] = useMeasure();
 
   const [highlightedDate, setHighlightedDate] = useState(
     dates[dates.length - 1]
@@ -224,6 +207,8 @@ function Timeseries({
   ]);
 
   useEffect(() => {
+    if (!width || !height) return;
+
     const T = dates.length;
     // Chart extremes
     const chartRight = width - margin.right;
@@ -240,7 +225,7 @@ function Timeseries({
       g.attr('class', 'x-axis2')
         .call(axisBottom(xScale).tickValues([]).tickSize(0))
         .select('.domain')
-        .style('transform', `translateY(${yScale(0)}px)`);
+        .style('transform', `translate3d(0, ${yScale(0)}px, 0)`);
 
       if (yScale(0) !== chartBottom) g.select('.domain').attr('opacity', 0.4);
       else g.select('.domain').attr('opacity', 0);
@@ -288,7 +273,7 @@ function Timeseries({
       /* X axis */
       svg
         .select('.x-axis')
-        .style('transform', `translateY(${chartBottom}px)`)
+        .style('transform', `translate3d(0, ${chartBottom}px, 0)`)
         .transition(t)
         .call(xAxis);
 
@@ -297,7 +282,7 @@ function Timeseries({
       /* Y axis */
       svg
         .select('.y-axis')
-        .style('transform', `translateX(${chartRight}px)`)
+        .style('transform', `translate3d(${chartRight}px, 0, 0)`)
         .transition(t)
         .call(yAxis, yScale, format);
 
@@ -674,6 +659,8 @@ const isEqual = (prevProps, currProps) => {
   ) {
     return false;
   } else if (!equal(currProps.endDate, prevProps.endDate)) {
+    return false;
+  } else if (!equal(currProps.statistics, prevProps.statistics)) {
     return false;
   } else if (!equal(currProps.dates, prevProps.dates)) {
     return false;
