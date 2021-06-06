@@ -1,5 +1,8 @@
-// export const API_DOMAIN = 'http://127.0.0.1:8080';
+// export const API_DOMAIN = 'http://192.168.1.69:8080';
+// export const API_DOMAIN =
+//   'https://raw.githubusercontent.com/shuklaayush/api/test/tmp';
 export const API_DOMAIN = 'https://api.covid19india.org';
+
 export const DATA_API_ROOT = `${API_DOMAIN}/v4/min`;
 
 export const LOCALE_SHORTHANDS = {
@@ -20,109 +23,119 @@ export const STATISTIC_CONFIGS = {
   confirmed: {
     displayName: 'confirmed',
     color: '#ff073a',
-    format: 'int',
-    definition: {key: 'confirmed'},
-    showDelta: true,
+    format: 'long',
+    tableConfig: {
+      showDelta: true,
+    },
   },
   active: {
     displayName: 'active',
     color: '#007bff',
-    format: 'int',
-    definition: {key: 'active'},
+    format: 'long',
   },
   recovered: {
     displayName: 'recovered',
     color: '#28a745',
-    format: 'int',
-    definition: {key: 'recovered'},
-    showDelta: true,
+    format: 'long',
+    tableConfig: {
+      showDelta: true,
+    },
   },
   deceased: {
     displayName: 'deceased',
     color: '#6c757d',
-    format: 'int',
-    definition: {key: 'deceased'},
-    showDelta: true,
+    format: 'long',
+    tableConfig: {
+      showDelta: true,
+    },
   },
   other: {
     displayName: 'other',
-    format: 'int',
-    definition: {key: 'other'},
-    showDelta: true,
+    format: 'long',
+    tableConfig: {
+      showDelta: true,
+    },
   },
   tested: {
     displayName: 'tested',
     color: '#4b1eaa',
     format: 'short',
-    definition: {key: 'tested'},
-    showDelta: true,
+    hideZero: true,
+    category: 'tested',
+    tableConfig: {
+      showDelta: true,
+    },
+  },
+  vaccinated1: {
+    displayName: 'vaccinated with at least one dose',
+    color: '#fb5581',
+    format: 'short',
+    hideZero: true,
+    category: 'vaccinated',
+    tableConfig: {
+      showDelta: true,
+    },
+  },
+  vaccinated2: {
+    displayName: 'fully vaccinated',
+    color: '#fb5581',
+    format: 'short',
+    hideZero: true,
+    category: 'vaccinated',
+    tableConfig: {
+      showDelta: true,
+    },
   },
   vaccinated: {
     displayName: 'vaccine doses administered',
     color: '#fb5581',
     format: 'short',
-    definition: {key: 'vaccinated'},
-    showDelta: true,
+    hideZero: true,
+    category: 'vaccinated',
+    tableConfig: {
+      showDelta: true,
+    },
   },
   tpr: {
     displayName: 'test positivity ratio',
     format: '%',
-    definition: {
-      key: 'confirmed',
-      normalizeByKey: 'tested',
-      multiplyFactor: 100,
-    },
-    // tableConfig: {
-    //   type: 'delta7',
-    //   displayName: 'test positivity ratio (last 7 days)',
-    // },
     color: '#fd7e14',
+    nonLinear: true,
+    hideZero: true,
+    category: 'tested',
+    tableConfig: {
+      type: 'delta7',
+      displayName: 'test positivity ratio (last 7 days)',
+    },
   },
   cfr: {
     displayName: 'case fatality ratio',
     format: '%',
-    definition: {
-      key: 'deceased',
-      normalizeByKey: 'confirmed',
-      multiplyFactor: 100,
-    },
+    color: '#6c757d',
+    nonLinear: true,
   },
   recoveryRatio: {
     displayName: 'recovery ratio',
     format: '%',
-    definition: {
-      key: 'recovered',
-      normalizeByKey: 'confirmed',
-      multiplyFactor: 100,
+    nonLinear: true,
+    tableConfig: {
+      hide: true,
     },
   },
   activeRatio: {
     displayName: 'active ratio',
     format: '%',
-    definition: {
-      key: 'active',
-      normalizeByKey: 'confirmed',
-      multiplyFactor: 100,
+    nonLinear: true,
+    tableConfig: {
+      hide: true,
     },
   },
   population: {
     displayName: 'population',
     format: 'short',
-    definition: {key: 'population'},
+    hideZero: true,
   },
 };
-
-export const PER_MILLION_OPTIONS = {
-  normalizeByKey: 'population',
-  multiplyFactor: 1e6,
-};
-
-const nanKeys = ['tested', 'vaccinated', 'population'];
-export const NAN_STATISTICS = Object.keys(STATISTIC_CONFIGS).filter(
-  (key) =>
-    nanKeys.includes(STATISTIC_CONFIGS[key]?.definition?.key) ||
-    nanKeys.includes(STATISTIC_CONFIGS[key]?.definition?.normalizeByKey)
-);
 
 export const PRIMARY_STATISTICS = [
   'confirmed',
@@ -131,11 +144,15 @@ export const PRIMARY_STATISTICS = [
   'deceased',
 ];
 
-export const BRUSH_STATISTICS = ['confirmed'];
+export const LEVEL_STATISTICS = [...PRIMARY_STATISTICS];
 
 export const TABLE_STATISTICS = [...PRIMARY_STATISTICS, 'tested', 'vaccinated'];
 
-export const TABLE_STATISTICS_EXPANDED = Object.keys(STATISTIC_CONFIGS);
+export const TABLE_STATISTICS_EXPANDED = Object.keys(STATISTIC_CONFIGS).filter(
+  (statistic) => !STATISTIC_CONFIGS[statistic]?.tableConfig?.hide
+);
+
+export const MAP_STATISTICS = [...PRIMARY_STATISTICS];
 
 export const TIMESERIES_STATISTICS = [
   ...PRIMARY_STATISTICS,
@@ -143,6 +160,8 @@ export const TIMESERIES_STATISTICS = [
   'vaccinated',
   'tpr',
 ];
+
+export const BRUSH_STATISTICS = ['confirmed'];
 
 export const UPDATES_COUNT = 5;
 
@@ -152,7 +171,7 @@ export const D3_TRANSITION_DURATION = 300;
 
 export const MINIGRAPH_LOOKBACK_DAYS = 20;
 
-export const TESTED_LOOKBACK_DAYS = 7;
+export const TESTED_EXPIRING_DAYS = 7;
 
 export const UNASSIGNED_STATE_CODE = 'UN';
 

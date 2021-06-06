@@ -1,4 +1,4 @@
-import {PRIMARY_STATISTICS, STATISTIC_CONFIGS} from '../constants';
+import {LEVEL_STATISTICS, STATISTIC_CONFIGS} from '../constants';
 
 import classnames from 'classnames';
 import {memo, useState, useCallback, useEffect} from 'react';
@@ -10,21 +10,23 @@ const MapSwitcher = ({mapStatistic, setMapStatistic}) => {
   const [mapSwitcher, {width}] = useMeasure();
   const [clicked, setClicked] = useState(false);
   const [count, setCount] = useState(0);
-  const [spring, set] = useSpring(() => ({
+  const [spring, springApi] = useSpring(() => ({
     opacity: 0,
     background: `${STATISTIC_CONFIGS[mapStatistic].color}20`,
     transform: `translate3d(${
-      width * PRIMARY_STATISTICS.indexOf(mapStatistic) * 0.25
+      (width * LEVEL_STATISTICS.indexOf(mapStatistic)) / LEVEL_STATISTICS.length
     }px, 0, 0)`,
+    width: `calc(${100 / LEVEL_STATISTICS.length}%)`,
     config: config.gentle,
   }));
 
   useEffect(() => {
     if (width > 0) {
       ReactDOM.unstable_batchedUpdates(() => {
-        set({
+        springApi.start({
           transform: `translate3d(${
-            width * PRIMARY_STATISTICS.indexOf(mapStatistic) * 0.25
+            (width * LEVEL_STATISTICS.indexOf(mapStatistic)) /
+            LEVEL_STATISTICS.length
           }px, 0, 0)`,
           opacity: 1,
           background: `${STATISTIC_CONFIGS[mapStatistic].color}20`,
@@ -34,7 +36,7 @@ const MapSwitcher = ({mapStatistic, setMapStatistic}) => {
         });
       });
     }
-  }, [count, mapStatistic, set, width]);
+  }, [count, mapStatistic, springApi, width]);
 
   const handleClick = useCallback(
     (statistic) => {
@@ -48,11 +50,12 @@ const MapSwitcher = ({mapStatistic, setMapStatistic}) => {
     <div className="MapSwitcher" ref={mapSwitcher}>
       <animated.div className="highlight" style={spring}></animated.div>
 
-      {PRIMARY_STATISTICS.map((statistic, index) => (
+      {LEVEL_STATISTICS.map((statistic, index) => (
         <div
           key={index}
           className={classnames('clickable', {[`is-${statistic}`]: !clicked})}
           onClick={handleClick.bind(this, statistic)}
+          style={{width: `calc(${100 / LEVEL_STATISTICS.length}%)`}}
         ></div>
       ))}
     </div>

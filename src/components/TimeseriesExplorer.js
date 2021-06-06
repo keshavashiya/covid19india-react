@@ -2,6 +2,7 @@ import TimeseriesLoader from './loaders/Timeseries';
 
 import {
   STATE_NAMES,
+  STATISTIC_CONFIGS,
   TIMESERIES_CHART_TYPES,
   TIMESERIES_LOOKBACK_DAYS,
   TIMESERIES_STATISTICS,
@@ -193,7 +194,9 @@ function TimeseriesExplorer({
     () =>
       TIMESERIES_STATISTICS.filter(
         (statistic) =>
-          (statistic !== 'vaccinated' || !hideVaccinated) &&
+          (!(STATISTIC_CONFIGS[statistic]?.category === 'vaccinated') ||
+            !hideVaccinated) &&
+          // (chartType === 'total' || statistic !== 'active') &&
           (chartType === 'delta' || statistic !== 'tpr')
       ),
     [chartType, hideVaccinated]

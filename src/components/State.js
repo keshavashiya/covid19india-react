@@ -4,10 +4,12 @@ import {
   fetcher,
   formatNumber,
   getStatistic,
+  parseIndiaDate,
   retry,
 } from '../utils/commonFunctions';
 
 import classnames from 'classnames';
+import {max} from 'date-fns';
 import {
   memo,
   useMemo,
@@ -27,7 +29,9 @@ import useSWR from 'swr';
 const DeltaBarGraph = lazy(() => retry(() => import('./DeltaBarGraph')));
 const Footer = lazy(() => retry(() => import('./Footer')));
 const Level = lazy(() => retry(() => import('./Level')));
-const LevelVaccinated = lazy(() => retry(() => import('./LevelVaccinated')));
+const VaccinationHeader = lazy(() =>
+  retry(() => import('./VaccinationHeader'))
+);
 const MapExplorer = lazy(() => retry(() => import('./MapExplorer')));
 const MapSwitcher = lazy(() => retry(() => import('./MapSwitcher')));
 const Minigraphs = lazy(() => retry(() => import('./Minigraphs')));
@@ -118,6 +122,19 @@ function State() {
 
   const lookback = showAllDistricts ? (window.innerWidth >= 540 ? 10 : 8) : 6;
 
+  const lastUpdated = useMemo(() => {
+    if (!data) {
+      return null;
+    }
+    const updatedDates = [
+      data[stateCode]?.meta?.['last_updated'],
+      data[stateCode]?.meta?.tested?.['last_updated'],
+    ];
+    return max(
+      updatedDates.filter((date) => date).map((date) => parseIndiaDate(date))
+    );
+  }, [stateCode, data]);
+
   return (
     <>
       <Helmet>
@@ -144,8 +161,8 @@ function State() {
             />
           </div>
 
-          {data?.[stateCode]?.total?.vaccinated && (
-            <LevelVaccinated data={data?.[stateCode]} />
+          {data?.[stateCode]?.total?.vaccinated1 && (
+            <VaccinationHeader data={data?.[stateCode]} />
           )}
 
           {data && (
@@ -158,6 +175,7 @@ function State() {
                   setRegionHighlighted,
                   mapStatistic,
                   setMapStatistic,
+                  lastUpdated,
                 }}
               ></MapExplorer>
             </Suspense>

@@ -378,7 +378,7 @@ h6 {
   flex-direction: row;
   flex-wrap: wrap;
   justify-content: center;
-  margin-left: 8rem;
+  margin-left: 9rem;
   margin-right: 3rem;
 
   .state-left,
@@ -402,12 +402,6 @@ h6 {
 
   .district-bar {
     width: calc(100% - 2rem);
-  }
-
-  .Minigraph {
-    .svg-parent {
-      width: calc(25%) !important;
-    }
   }
 
   .MapExplorer {
@@ -1254,6 +1248,7 @@ h6 {
 
 .Timeline {
   align-items: center;
+  user-select: none;
   width: 100%;
 
   .timeline {
@@ -1343,6 +1338,7 @@ h6 {
         }
 
         &:hover {
+          background-color: #6c757d30;
           opacity: 0.8;
         }
 
@@ -1592,7 +1588,6 @@ h6 {
   .highlight {
     pointer-events: none;
     position: absolute;
-    width: calc(25%) !important;
   }
 
   .highlight,
@@ -1637,7 +1632,6 @@ h6 {
   .level-item {
     display: flex;
     flex-direction: column;
-    width: calc(25%);
 
     & > * {
       align-self: center;
@@ -1708,24 +1702,143 @@ h6 {
       color: $gray-mid;
     }
   }
+
+  .is-tested {
+    h1,
+    h5 {
+      color: $purple;
+    }
+
+    h4 {
+      color: $purple-mid;
+    }
+  }
+
+  .is-vaccinated {
+    h1,
+    h5 {
+      color: $pink;
+    }
+
+    h4 {
+      color: $pink-mid;
+    }
+  }
+
+  .is-tpr {
+    h1,
+    h5 {
+      color: $orange;
+    }
+
+    h4 {
+      color: $orange-mid;
+    }
+  }
 }
 
-.LevelVaccinated {
+.VaccinationHeader {
   align-items: center;
   align-self: center;
-  animation-delay: 200ms;
-  background: $pink-light;
-  border-radius: 5px;
-  color: $pink;
   display: flex;
-  flex-direction: row;
-  margin-bottom: 0.5rem;
-  margin-top: 1.5rem;
-  padding: 0.5rem;
+  flex-direction: column;
+  width: 100%;
 
-  h4 {
-    font-weight: 500;
-    margin: 0 0 0 0.25rem;
+  .level-vaccinated {
+    align-items: center;
+    align-self: center;
+    animation-delay: 200ms;
+    background: $pink-light;
+    border-radius: 5px;
+    color: $pink;
+    display: flex;
+    flex-direction: row;
+    margin-bottom: 0.5rem;
+    margin-top: 2rem;
+    padding: 0.5rem;
+
+    div {
+      font-size: 13px;
+      font-weight: 500;
+      margin: 0 0 0 0.25rem;
+    }
+  }
+
+  .progress-bar-wrapper {
+    color: $gray;
+    font-size: 12px;
+    margin-bottom: 0.25rem;
+    margin-top: 0.5rem;
+    position: relative;
+    width: 100%;
+
+    .progress-bar {
+      background-color: $pink-light;
+      border-radius: 5px;
+      color: $pink;
+      height: 24px;
+      margin-bottom: 0.1rem;
+      margin-top: 0.1rem;
+      position: relative;
+
+      &.value {
+        background-image: linear-gradient(
+          45deg,
+          $pink-mid 25%,
+          $pink-light 25%,
+          $pink-light 50%,
+          $pink-mid 50%,
+          $pink-mid 75%,
+          $pink-light 75%,
+          $pink-light 100%
+        );
+        background-size: 14px 14px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        justify-content: center;
+        margin: 0;
+        opacity: 0.6;
+        position: absolute;
+
+        &.opaque {
+          background: $pink-mid;
+        }
+
+        &.highlighted {
+          opacity: 1;
+        }
+
+        span {
+          margin-left: calc(100% + 0.25rem);
+          width: max-content;
+        }
+      }
+    }
+
+    .legend {
+      opacity: 0.6;
+
+      &.highlighted {
+        opacity: 1;
+      }
+
+      .label-wrapper {
+        display: flex;
+
+        .label {
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+      }
+
+      .arrow {
+        cursor: pointer;
+        margin-bottom: 0.2rem;
+        width: fit-content;
+      }
+    }
   }
 }
 
@@ -1767,7 +1880,7 @@ abbr {
 
   .option-toggle,
   .info-toggle,
-  .million-toggle,
+  .lakh-toggle,
   .expand-table-toggle {
     background: $gray-light;
     border-radius: 5px;
@@ -1809,10 +1922,10 @@ abbr {
     }
   }
 
-  .million-toggle {
+  .lakh-toggle {
     font-size: 13px;
     font-weight: 600;
-    padding: 11.5px 10px;
+    padding: 11.5px 12.1px;
     text-align: center;
 
     &.is-highlighted {
@@ -1925,7 +2038,9 @@ abbr {
       }
     }
 
-    .is-vaccinated {
+    .is-vaccinated,
+    .is-vaccinated1,
+    .is-vaccinated2 {
       svg {
         color: $pink;
       }
@@ -2159,7 +2274,9 @@ abbr {
           }
         }
 
-        &.is-vaccinated {
+        &.is-vaccinated,
+        &.is-vaccinated1,
+        &.is-vaccinated2 {
           svg {
             color: $pink;
           }
@@ -2201,7 +2318,9 @@ abbr {
           color: $purple;
         }
 
-        .is-vaccinated {
+        .is-vaccinated,
+        .is-vaccinated1,
+        .is-vaccinated2 {
           color: $pink;
         }
       }
@@ -3466,7 +3585,6 @@ input {
 
   .svg-parent {
     background: transparent !important;
-    width: calc(25%);
   }
 }
 
@@ -3582,6 +3700,14 @@ footer {
     }
   }
 
+  .instagram {
+    color: $pink-mid;
+
+    &:hover {
+      color: $pink;
+    }
+  }
+
   .twitter {
     color: $pblue-mid;
 
@@ -3666,7 +3792,6 @@ footer {
     font-size: 10px !important;
     font-weight: 600;
     margin: 0;
-    outline: none;
     padding: 10px 15px;
     text-align: center;
     transition: background 0.25s ease-in-out;
@@ -4109,29 +4234,6 @@ footer {
   }
 }
 
-.essentials {
-  align-items: center;
-  align-self: center;
-  animation-delay: 750ms;
-  background: #f00;
-  background: $pink-light;
-  border-radius: 5px;
-  color: $pink;
-  cursor: pointer;
-  display: flex;
-  flex-direction: row;
-  font-size: 13px;
-  justify-content: center;
-  margin-top: 1.5rem;
-  padding: 1rem;
-  text-decoration: none;
-  width: calc(100% - 4rem);
-
-  svg {
-    margin-right: 0.5rem;
-  }
-}
-
 .Resources {
   align-items: center;
   display: flex;
@@ -4334,7 +4436,8 @@ footer {
   .StateMeta,
   .timeline,
   .table-top,
-  .LanguageSwitcher {
+  .LanguageSwitcher,
+  .VaccinationHeader {
     width: calc(100% - 2rem);
   }
 
@@ -4586,9 +4689,9 @@ footer {
     margin-left: 0;
   }
 
-  .LevelVaccinated {
-    margin-bottom: 3rem !important;
-    margin-top: 2rem !important;
+  .VaccinationHeader {
+    margin-bottom: 2rem !important;
+    margin-top: 1rem !important;
   }
 
   .timeseries-header {
@@ -4599,10 +4702,6 @@ footer {
         margin-top: 0.75rem;
       }
     }
-  }
-
-  .essentials {
-    margin-top: 0;
   }
 
   .Resources {
@@ -4967,6 +5066,20 @@ footer {
     svg {
       rect {
         fill: #1e1e30 !important;
+      }
+    }
+  }
+
+  .Resources {
+    .heading {
+      color: $gray;
+    }
+
+    .resources {
+      .resource {
+        .title {
+          color: $gray;
+        }
       }
     }
   }

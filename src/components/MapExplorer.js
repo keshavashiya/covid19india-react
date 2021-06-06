@@ -5,7 +5,7 @@ import {
   MAP_TYPES,
   MAP_VIEWS,
   MAP_VIZS,
-  PRIMARY_STATISTICS,
+  MAP_STATISTICS,
   SPRING_CONFIG_NUMBERS,
   STATE_NAMES,
   STATISTIC_CONFIGS,
@@ -56,6 +56,7 @@ function MapExplorer({
   setAnchor,
   expandTable = false,
   hideDistrictData = false,
+  lastUpdated,
 }) {
   const {t} = useTranslation();
   const mapExplorerRef = useRef();
@@ -171,12 +172,15 @@ function MapExplorer({
     return styles;
   }, []);
 
-  const perMillion = mapViz === MAP_VIZS.CHOROPLETH;
+  const perLakh = mapViz === MAP_VIZS.CHOROPLETH;
 
   const getMapStatistic = useCallback(
     (data) =>
-      getStatistic(data, 'total', mapStatistic, {perMillion: perMillion}),
-    [mapStatistic, perMillion]
+      getStatistic(data, 'total', mapStatistic, {
+        expiredDate: lastUpdated,
+        normalizedByPopulationPer: perLakh ? 'lakh' : null,
+      }),
+    [mapStatistic, perLakh, lastUpdated]
   );
 
   const spring = useSpring({
@@ -185,11 +189,11 @@ function MapExplorer({
   });
 
   const handleStatisticChange = (direction) => {
-    const currentIndex = PRIMARY_STATISTICS.indexOf(mapStatistic);
+    const currentIndex = MAP_STATISTICS.indexOf(mapStatistic);
     const toIndex =
-      (PRIMARY_STATISTICS.length + currentIndex + direction) %
-      PRIMARY_STATISTICS.length;
-    setMapStatistic(PRIMARY_STATISTICS[toIndex]);
+      (MAP_STATISTICS.length + currentIndex + direction) %
+      MAP_STATISTICS.length;
+    setMapStatistic(MAP_STATISTICS[toIndex]);
   };
 
   const swipeHandlers = useSwipeable({
@@ -242,15 +246,17 @@ function MapExplorer({
                 {spring.total.to((total) =>
                   formatNumber(
                     total,
-                    statisticConfig.format !== 'short'
-                      ? statisticConfig.format
-                      : 'int',
+                    statisticConfig.format === 'short'
+                      ? 'long'
+                      : statisticConfig.format,
                     mapStatistic
                   )
                 )}
               </animated.div>
               <span>{`${t(capitalize(statisticConfig.displayName))}${
-                perMillion ? ` ${t('per 10 lakh people')}` : ''
+                perLakh && !statisticConfig?.nonLinear
+                  ? ` ${t('per lakh people')}`
+                  : ''
               }`}</span>
             </h1>
           )}
@@ -307,7 +313,7 @@ function MapExplorer({
 
           {(expandTable || width < 769) && (
             <div className="switch-statistic fadeInUp" style={trail[5]}>
-              {PRIMARY_STATISTICS.map((statistic) => (
+              {MAP_STATISTICS.map((statistic) => (
                 <div
                   key={statistic}
                   className={classnames('statistic-option', `is-${statistic}`, {
