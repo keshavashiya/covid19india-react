@@ -6,7 +6,7 @@ $dark: #343a40;
 $black: #000;
 
 $blue: #007bff;
-$blue-light: #007bff10;
+$blue-light: #007bff20;
 $blue-hover: #007bff30;
 $blue-light-opaque: #eff7ff;
 $blue-mid: #007bff99;
@@ -401,6 +401,7 @@ h6 {
   }
 
   .district-bar {
+    margin-bottom: 2.5rem;
     width: calc(100% - 2rem);
   }
 
@@ -494,6 +495,7 @@ h6 {
       display: flex;
       flex-direction: row;
       justify-content: space-between;
+      margin-right: 1rem;
 
       & > * {
         align-self: center;
@@ -501,11 +503,6 @@ h6 {
 
       h3 {
         width: calc(100% - 2.5rem);
-      }
-
-      span {
-        margin-bottom: auto;
-        margin-right: 1rem;
       }
 
       svg {
@@ -626,33 +623,18 @@ h6 {
       }
     }
 
-    &.ptr {
-      background: $pink-light;
-
-      h3,
-      h5,
-      svg,
-      p {
-        color: $pink-mid;
-      }
-
-      h1 {
-        color: $pink;
-      }
-    }
-
-    &.gr {
-      background: $brown-light;
+    &.tpr {
+      background: $orange-light;
 
       h3,
       h5,
       p,
       svg {
-        color: $brown-mid;
+        color: $orange-mid;
       }
 
       h1 {
-        color: $brown;
+        color: $orange;
       }
     }
   }
@@ -702,6 +684,32 @@ h6 {
     top: 0;
     width: 100vw;
     z-index: 10;
+  }
+}
+
+.StatisticDropdown {
+  margin-left: -3px;
+  margin-top: 0.5rem;
+
+  select {
+    appearance: none;
+    background-color: #eee;
+    border: 0;
+    border-radius: 3px;
+    color: $gray;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    max-width: 14rem;
+    min-width: 3rem;
+    padding: 3px;
+    transition: background 0.2s ease-in-out, color 0.2s ease-in-out;
+
+    option {
+      background-color: #eee;
+      color: $gray;
+      padding: 3px;
+    }
   }
 }
 
@@ -1205,6 +1213,7 @@ h6 {
       fill: #a6abb0;
       stroke: #a6abb0;
       stroke-width: 0.5;
+      user-select: none;
       width: 16px;
 
       &:hover {
@@ -1344,6 +1353,20 @@ h6 {
 
         &::selection {
           background: transparent !important;
+        }
+      }
+
+      .calendar-icon {
+        align-self: center;
+        cursor: pointer;
+        display: flex;
+        margin-left: 0.2rem;
+        opacity: 0;
+        transition: opacity 0.15s ease-in-out;
+
+        &.show {
+          opacity: 1;
+          pointer-events: all;
         }
       }
     }
@@ -1742,6 +1765,8 @@ h6 {
   align-self: center;
   display: flex;
   flex-direction: column;
+  margin-bottom: 0.25rem;
+  margin-top: 2rem;
   width: 100%;
 
   .level-vaccinated {
@@ -1754,7 +1779,6 @@ h6 {
     display: flex;
     flex-direction: row;
     margin-bottom: 0.5rem;
-    margin-top: 2rem;
     padding: 0.5rem;
 
     div {
@@ -1767,7 +1791,6 @@ h6 {
   .progress-bar-wrapper {
     color: $gray;
     font-size: 12px;
-    margin-bottom: 0.25rem;
     margin-top: 0.5rem;
     position: relative;
     width: 100%;
@@ -1868,6 +1891,21 @@ abbr {
   margin-top: 2rem;
 }
 
+.Icons {
+  font-size: 12px;
+  font-weight: 600;
+
+  span {
+    font-size: 8px;
+    font-weight: 600;
+    line-height: 6px;
+    position: absolute;
+    right: 5px;
+    top: 5px;
+    user-select: none;
+  }
+}
+
 .table-top {
   align-items: flex-end;
   align-self: center;
@@ -1878,24 +1916,36 @@ abbr {
   margin-bottom: 0.25rem;
   width: 100%;
 
-  .option-toggle,
-  .info-toggle,
-  .lakh-toggle,
-  .expand-table-toggle {
+  .table-top-left {
+    display: flex;
+    flex-direction: row;
+  }
+
+  .toggle {
+    align-items: center;
     background: $gray-light;
     border-radius: 5px;
     color: $gray-mid;
     cursor: pointer;
+    display: flex;
+    height: 2.5rem;
+    justify-content: center;
     margin-right: 0.25rem;
-    padding: 0.5rem;
+    user-select: none;
+    width: 2.5rem;
+
+    &.disabled {
+      cursor: not-allowed;
+    }
 
     svg {
-      align-self: center;
       margin: 0.25rem;
     }
 
     &:hover {
-      background: $gray-hover;
+      &:not(.disabled) {
+        background: $gray-hover;
+      }
     }
   }
 
@@ -1923,17 +1973,23 @@ abbr {
   }
 
   .lakh-toggle {
-    font-size: 13px;
-    font-weight: 600;
-    padding: 11.5px 12.1px;
-    text-align: center;
-
     &.is-highlighted {
       background: $pink-light;
       color: $pink;
 
       &:hover {
         background: $pink-hover;
+      }
+    }
+  }
+
+  .delta-toggle {
+    &.is-highlighted {
+      background: $blue-light;
+      color: $blue;
+
+      &:hover {
+        background: $blue-hover;
       }
     }
   }
@@ -2058,10 +2114,11 @@ abbr {
       }
     }
 
-    &.invert {
-      svg {
-        margin-bottom: 0;
-        transform: rotate(180deg);
+    &.abbr {
+      sup {
+        position: relative;
+        top: -0.4em;
+        vertical-align: baseline;
       }
     }
   }
@@ -2195,6 +2252,7 @@ abbr {
 
       .cell {
         background: $gray-hover-opaque !important;
+        padding-bottom: 0.75rem;
       }
     }
 
@@ -2281,11 +2339,6 @@ abbr {
             color: $pink;
           }
         }
-
-        &.invert {
-          margin-top: 0.25rem;
-          transform: rotate(180deg);
-        }
       }
 
       &.statistic {
@@ -2334,9 +2387,23 @@ abbr {
         font-size: 13px;
         font-weight: 900;
         padding: 1.25rem 0.5rem 0.75rem;
+        text-align: right;
+
+        &.state {
+          padding: 1.5rem 0.5rem 0.75rem;
+
+          .sort-icon {
+            top: 0.5rem;
+          }
+        }
 
         &:hover {
           background: $gray-hover-opaque !important;
+        }
+
+        svg {
+          margin-left: 0;
+          margin-right: 0.3rem;
         }
       }
 
@@ -2429,6 +2496,7 @@ abbr {
   cursor: pointer;
   position: absolute;
   right: 0;
+  user-select: none;
   z-index: 999;
 
   svg {
@@ -2489,6 +2557,7 @@ abbr {
 
     &.maplegend {
       margin-top: 0.6rem;
+      user-select: none;
       width: 100%;
       z-index: 1;
     }
@@ -2610,97 +2679,140 @@ abbr {
     }
 
     .panel-right {
+      color: $gray-mid;
       display: flex;
       flex-direction: column;
+
+      .disabled {
+        cursor: not-allowed !important;
+      }
 
       svg {
         transition: all 0.3s ease-in-out;
       }
 
-      &.is-confirmed {
-        svg {
-          fill: $cherry-light;
-          stroke: $cherry-mid;
-        }
+      .is-highlighted {
+        background: $gray-middark !important;
 
-        .boundary {
-          svg {
-            fill: $cherry-mid;
-            stroke: none;
+        &:hover {
+          &:not(.disabled) {
+            background: $gray-hover !important;
           }
         }
+      }
+
+      &.is-confirmed {
+        color: $cherry-mid;
 
         .is-highlighted {
-          background: $cherry-light;
+          background: $cherry-light !important;
 
           &:hover {
-            background: $cherry-hover;
+            &:not(.disabled) {
+              background: $cherry-hover !important;
+            }
           }
         }
       }
 
       &.is-active {
-        svg {
-          fill: $blue-light;
-          stroke: $blue-mid;
-        }
-
-        .boundary {
-          svg {
-            fill: $blue-mid;
-            stroke: none;
-          }
-        }
+        color: $blue-mid;
 
         .is-highlighted {
-          background: $blue-light;
+          background: $blue-light !important;
 
           &:hover {
-            background: $blue-hover;
+            &:not(.disabled) {
+              background: $blue-hover !important;
+            }
           }
         }
       }
 
       &.is-recovered {
-        svg {
-          fill: $green-light;
-          stroke: $green-mid;
-        }
-
-        .boundary {
-          svg {
-            fill: $green-mid;
-            stroke: none;
-          }
-        }
+        color: $green-mid;
 
         .is-highlighted {
-          background: $green-light;
+          background: $green-light !important;
 
           &:hover {
-            background: $green-hover;
+            &:not(.disabled) {
+              background: $green-hover !important;
+            }
           }
         }
       }
 
       &.is-deceased {
-        svg {
-          fill: $gray-light;
-          stroke: $gray-mid;
-        }
-
-        .boundary {
-          svg {
-            fill: $gray-mid;
-            stroke: none;
-          }
-        }
+        color: $gray-mid;
 
         .is-highlighted {
-          background: $gray-middark;
+          background: $gray-middark !important;
 
           &:hover {
-            background: $gray-hover;
+            &:not(.disabled) {
+              background: $gray-hover !important;
+            }
+          }
+        }
+      }
+
+      &.is-tpr,
+      &.is-cfr,
+      &.is-other {
+        color: $orange-mid;
+
+        .is-highlighted {
+          background: $orange-light !important;
+
+          &:hover {
+            &:not(.disabled) {
+              background: $orange-hover !important;
+            }
+          }
+        }
+      }
+
+      &.is-tested {
+        color: $purple-mid;
+
+        .is-highlighted {
+          background: $purple-light !important;
+
+          &:hover {
+            &:not(.disabled) {
+              background: $purple-hover !important;
+            }
+          }
+        }
+      }
+
+      &.is-vaccinated,
+      &.is-vaccinated1,
+      &.is-vaccinated2 {
+        color: $pink-mid;
+
+        .is-highlighted {
+          background: $pink-light !important;
+
+          &:hover {
+            &:not(.disabled) {
+              background: $pink-hover !important;
+            }
+          }
+        }
+      }
+
+      &.is-population {
+        color: $brown-mid;
+
+        .is-highlighted {
+          background: $brown-light !important;
+
+          &:hover {
+            &:not(.disabled) {
+              background: $brown-hover !important;
+            }
           }
         }
       }
@@ -2712,7 +2824,7 @@ abbr {
         justify-content: flex-end;
         margin-bottom: 0.25rem;
 
-        div {
+        .toggle {
           align-items: center;
           background: $gray-light;
           border-radius: 5px;
@@ -2721,6 +2833,8 @@ abbr {
           flex-direction: row;
           height: 2.5rem;
           justify-content: center;
+          margin-left: 0.25rem;
+          user-select: none;
           width: 2.5rem;
 
           &.back {
@@ -2733,11 +2847,9 @@ abbr {
           }
 
           &:hover {
-            background: $gray-hover;
-          }
-
-          &:not(:last-child) {
-            margin-right: 0.25rem;
+            &:not(.disabled) {
+              background: $gray-hover;
+            }
           }
 
           svg {
@@ -2746,7 +2858,9 @@ abbr {
         }
 
         .divider {
+          background: $gray-hover;
           border-radius: 5px;
+          margin-left: 0.25rem;
           width: 2px !important;
         }
       }
@@ -2757,7 +2871,7 @@ abbr {
         position: absolute;
         top: 5rem;
 
-        div {
+        .statistic-option {
           background: none;
           display: flex;
           flex-direction: row;
@@ -2774,16 +2888,26 @@ abbr {
             background: none;
           }
 
+          svg {
+            fill: $gray-hover;
+            stroke: none;
+          }
+
+          &.is-highlighted {
+            svg {
+              fill: $gray;
+              transform: scale(1.25);
+            }
+          }
+
           &.is-confirmed {
             svg {
               fill: $cherry-hover;
-              stroke: none;
             }
 
             &.is-highlighted {
               svg {
                 fill: $cherry;
-                transform: scale(1.25);
               }
             }
           }
@@ -2791,13 +2915,11 @@ abbr {
           &.is-active {
             svg {
               fill: $blue-hover;
-              stroke: none;
             }
 
             &.is-highlighted {
               svg {
                 fill: $blue;
-                transform: scale(1.25);
               }
             }
           }
@@ -2805,13 +2927,11 @@ abbr {
           &.is-recovered {
             svg {
               fill: $green-hover;
-              stroke: none;
             }
 
             &.is-highlighted {
               svg {
                 fill: $green;
-                transform: scale(1.25);
               }
             }
           }
@@ -2819,13 +2939,23 @@ abbr {
           &.is-deceased {
             svg {
               fill: $gray-hover;
-              stroke: none;
             }
 
             &.is-highlighted {
               svg {
                 fill: $gray;
-                transform: scale(1.25);
+              }
+            }
+          }
+
+          &.is-vaccinated {
+            svg {
+              fill: $pink-hover;
+            }
+
+            &.is-highlighted {
+              svg {
+                fill: $pink;
               }
             }
           }
@@ -3868,13 +3998,14 @@ footer {
     font-weight: 900;
     margin-top: 0.5rem;
 
-    &:hover {
-      color: $blue;
-    }
-
     svg {
       height: 1rem;
-      margin-bottom: -0.25rem;
+      margin-bottom: -0.1rem;
+      margin-left: 0.25rem;
+    }
+
+    &:hover {
+      color: $blue;
     }
   }
 }
@@ -3998,6 +4129,10 @@ footer {
       &.deceased {
         color: $gray;
       }
+
+      &.vaccinated {
+        color: $pink;
+      }
     }
   }
 
@@ -4100,6 +4235,10 @@ footer {
           &.deceased {
             color: $gray-mid;
           }
+
+          &.vaccianted {
+            color: $pink-mid;
+          }
         }
 
         svg {
@@ -4121,6 +4260,10 @@ footer {
 
           &.deceased {
             color: $gray-mid;
+          }
+
+          &.vaccinated {
+            color: $pink-mid;
           }
         }
 
@@ -4208,28 +4351,35 @@ footer {
 }
 
 .Tooltip {
-  display: flex;
-  flex-direction: column;
+  background-color: $black !important;
+  border-radius: 8px !important;
+  color: $white;
+  font-size: 13px !important;
+  font-weight: 600;
+  padding: 0.5rem;
 
   .message {
-    background: #000;
-    border-radius: 5px;
-    display: flex;
-    flex-direction: row;
-    font-size: 13px;
-    font-weight: 400;
-    justify-content: flex-end;
-    max-width: 30vw;
-    min-width: 10rem;
-    padding: 0.5rem;
-    pointer-events: none;
-    right: 0;
-    top: 0;
-    transform: translate3d(2rem, 0, 0);
+    margin: 0;
 
-    p {
-      color: $white !important;
-      margin: 0;
+    :not(:last-child) {
+      margin-bottom: 0.5rem;
+    }
+  }
+}
+
+.frac {
+  display: inline-block;
+  letter-spacing: 0.001em;
+  position: relative;
+  text-align: center;
+  vertical-align: middle;
+
+  span {
+    display: block;
+    padding: 0.1em;
+
+    &.bottom {
+      border-top: thin solid;
     }
   }
 }
@@ -4420,6 +4570,10 @@ footer {
       margin-left: 2.5rem;
       width: calc(50% - 2rem);
     }
+  }
+
+  footer {
+    margin-bottom: 5rem;
   }
 }
 
@@ -4673,7 +4827,7 @@ footer {
     display: grid;
     grid-gap: 1rem;
     grid-template-rows: repeat(auto-fit, minmax(5rem));
-    margin-bottom: 1rem;
+    margin-bottom: 2.5rem;
 
     .meta-item {
       min-width: 1rem;
@@ -4690,8 +4844,8 @@ footer {
   }
 
   .VaccinationHeader {
-    margin-bottom: 2rem !important;
-    margin-top: 1rem !important;
+    margin-bottom: 2rem;
+    margin-top: 2rem;
   }
 
   .timeseries-header {
@@ -4857,6 +5011,14 @@ footer {
       h2 {
         &.tested {
           color: #9673b9 !important;
+        }
+      }
+    }
+
+    .panel {
+      .panel-left {
+        .tested {
+          color: $dark-m-purple !important;
         }
       }
     }
@@ -5059,6 +5221,15 @@ footer {
   .StateDropdown {
     .dropdown {
       background: #1e1e30 !important;
+    }
+  }
+
+  .StatisticDropdown {
+    select {
+      option {
+        background: #1e1e30;
+        color: $gray;
+      }
     }
   }
 

@@ -12,19 +12,16 @@ import {useTranslation} from 'react-i18next';
 import {Link} from 'react-router-dom';
 import {useTransition, animated} from 'react-spring';
 import {useLockBodyScroll, usePageLeave, useWindowSize} from 'react-use';
+import useDarkMode from 'use-dark-mode';
 
-function Navbar({
-  pages,
-  darkMode,
-  showLanguageSwitcher,
-  setShowLanguageSwitcher,
-}) {
+function Navbar({pages, showLanguageSwitcher, setShowLanguageSwitcher}) {
   const {i18n, t} = useTranslation();
   const currentLanguage = Object.keys(locales).includes(i18n?.language)
     ? i18n?.language
     : i18n?.options?.fallbackLng[0];
 
   const [expand, setExpand] = useState(false);
+  const darkMode = useDarkMode(false);
 
   useLockBodyScroll(expand);
   const windowSize = useWindowSize();
@@ -44,7 +41,7 @@ function Navbar({
   });
 
   const handleMouseEnter = useCallback(() => {
-    if (windowSize.width > 769) {
+    if (windowSize.width >= 769) {
       setExpand(true);
     }
   }, [windowSize.width]);
@@ -77,7 +74,7 @@ function Navbar({
           <span>{expand ? t('Close') : t('Menu')}</span>
         )}
 
-        {windowSize.width > 769 && (
+        {windowSize.width >= 769 && (
           <>
             <Link to="/">
               <span>
@@ -123,7 +120,7 @@ function Expand({pages, setExpand, darkMode, windowSize}) {
   const {t} = useTranslation();
 
   const handleMouseLeave = useCallback(() => {
-    windowSize.width > 768 && setExpand(false);
+    windowSize.width >= 769 && setExpand(false);
   }, [setExpand, windowSize.width]);
 
   return (
@@ -149,7 +146,7 @@ function Expand({pages, setExpand, darkMode, windowSize}) {
         return null;
       })}
 
-      {windowSize.width < 768 && <SunMoon {...{darkMode}} />}
+      {windowSize.width < 769 && <SunMoon {...{darkMode}} />}
 
       <div className="expand-bottom">
         <h5>{t('A crowdsourced initiative.')}</h5>

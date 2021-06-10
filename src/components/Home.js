@@ -1,6 +1,12 @@
 import TableLoader from './loaders/Table';
 
-import {DATA_API_ROOT, GOSPEL_DATE} from '../constants';
+import {
+  DATA_API_ROOT,
+  DISTRICT_START_DATE,
+  DISTRICT_TEST_END_DATE,
+  MAP_VIEWS,
+  TESTED_EXPIRING_DAYS,
+} from '../constants';
 import useIsVisible from '../hooks/useIsVisible';
 import useStickySWR from '../hooks/useStickySWR';
 import {
@@ -11,7 +17,7 @@ import {
 } from '../utils/commonFunctions';
 
 import classnames from 'classnames';
-import {max} from 'date-fns';
+import {addDays, formatISO, max} from 'date-fns';
 import {useMemo, useRef, useState, lazy, Suspense} from 'react';
 import {Helmet} from 'react-helmet';
 import {useLocation} from 'react-router-dom';
@@ -45,6 +51,8 @@ function Home() {
     'mapStatistic',
     'active'
   );
+  const [mapView, setMapView] = useLocalStorage('mapView', MAP_VIEWS.DISTRICTS);
+
   const [date, setDate] = useState('');
   const location = useLocation();
 
@@ -70,11 +78,19 @@ function Home() {
   const isVisible = useIsVisible(homeRightElement);
   const {width} = useWindowSize();
 
-  const hideDistrictData = date !== '' && date < GOSPEL_DATE;
+  const hideDistrictData = date !== '' && date < DISTRICT_START_DATE;
+  const hideDistrictTestData =
+    date === '' ||
+    date >
+      formatISO(
+        addDays(parseIndiaDate(DISTRICT_TEST_END_DATE), TESTED_EXPIRING_DAYS),
+        {representation: 'date'}
+      );
+
   const hideVaccinated =
     getStatistic(data?.['TT'], 'total', 'vaccinated') === 0;
 
-  const lastUpdated = useMemo(() => {
+  const lastUpdatedDate = useMemo(() => {
     if (!data) {
       return null;
     }
@@ -83,8 +99,11 @@ function Home() {
       data['TT']?.meta?.['last_updated'] || date,
       data['TT']?.meta?.tested?.['last_updated'],
     ];
-    return max(
-      updatedDates.filter((date) => date).map((date) => parseIndiaDate(date))
+    return formatISO(
+      max(
+        updatedDates.filter((date) => date).map((date) => parseIndiaDate(date))
+      ),
+      {representation: 'date'}
     );
   }, [data, date]);
 
@@ -126,7 +145,7 @@ function Home() {
           <div style={{position: 'relative', marginTop: '1rem'}}>
             {data && (
               <Suspense fallback={<div style={{height: '50rem'}} />}>
-                {width > 769 && !expandTable && (
+                {width >= 769 && !expandTable && (
                   <MapSwitcher {...{mapStatistic, setMapStatistic}} />
                 )}
                 <Level data={data['TT']} />
@@ -158,8 +177,9 @@ function Home() {
                   expandTable,
                   setExpandTable,
                   hideDistrictData,
+                  hideDistrictTestData,
                   hideVaccinated,
-                  lastUpdated,
+                  lastUpdatedDate,
                 }}
               />
             </Suspense>
@@ -169,7 +189,7 @@ function Home() {
         <div
           className={classnames('home-right', {expanded: expandTable})}
           ref={homeRightElement}
-          style={{minHeight: '2rem'}}
+          style={{minHeight: '4rem'}}
         >
           {(isVisible || location.hash) && (
             <>
@@ -178,7 +198,7 @@ function Home() {
                   className={classnames('map-container', {
                     expanded: expandTable,
                     stickied:
-                      anchor === 'mapexplorer' || (expandTable && width > 769),
+                      anchor === 'mapexplorer' || (expandTable && width >= 769),
                   })}
                 >
                   <Suspense fallback={<div style={{height: '50rem'}} />}>
@@ -189,13 +209,17 @@ function Home() {
                         data,
                         mapStatistic,
                         setMapStatistic,
+                        mapView,
+                        setMapView,
                         regionHighlighted,
                         setRegionHighlighted,
                         anchor,
                         setAnchor,
                         expandTable,
+                        lastUpdatedDate,
                         hideDistrictData,
-                        lastUpdated,
+                        hideDistrictTestData,
+                        hideVaccinated,
                       }}
                     />
                   </Suspense>

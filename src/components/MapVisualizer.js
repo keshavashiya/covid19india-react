@@ -25,6 +25,7 @@ import {
   interpolateGreys,
   interpolatePurples,
   interpolateOranges,
+  interpolatePiYG,
 } from 'd3-scale-chromatic';
 import {select} from 'd3-selection';
 import {transition} from 'd3-transition';
@@ -37,19 +38,26 @@ import {feature, mesh} from 'topojson-client';
 const [width, height] = [432, 488];
 
 const colorInterpolator = (statistic) => {
-  switch (statistic) {
-    case 'confirmed':
-      return (t) => interpolateReds(t * 0.85);
-    case 'active':
-      return (t) => interpolateBlues(t * 0.85);
-    case 'recovered':
-      return (t) => interpolateGreens(t * 0.85);
-    case 'deceased':
-      return (t) => interpolateGreys(t * 0.85);
-    case 'tested':
-      return (t) => interpolatePurples(t * 0.85);
-    default:
-      return (t) => interpolateOranges(t * 0.85);
+  if (statistic === 'confirmed') {
+    return (t) => interpolateReds(t * 0.85);
+  } else if (statistic === 'active') {
+    return (t) => interpolateBlues(t * 0.85);
+  } else if (statistic === 'recovered') {
+    return (t) => interpolateGreens(t * 0.85);
+  } else if (statistic === 'deceased') {
+    return (t) => interpolateGreys(t * 0.85);
+  } else if (statistic === 'tested') {
+    return (t) => interpolatePurples(t * 0.85);
+  } else if (
+    statistic === 'tpr' ||
+    statistic === 'cfr' ||
+    statistic === 'other'
+  ) {
+    return (t) => interpolateOranges(t * 0.85);
+  } else if (STATISTIC_CONFIGS[statistic]?.category === 'vaccinated') {
+    return (t) => interpolatePiYG(0.15 + 0.35 * (1 - t));
+  } else {
+    return (t) => interpolateOranges(t * 0.85);
   }
 };
 
@@ -58,12 +66,11 @@ function MapVisualizer({
   isDistrictView,
   mapViz,
   data,
-  changeMap,
   regionHighlighted,
   setRegionHighlighted,
   statistic,
-  getStatistic,
-  isCountryLoaded,
+  getMapStatistic,
+  transformStatistic,
 }) {
   const {t} = useTranslation();
   const svgRef = useRef(null);
@@ -80,18 +87,19 @@ function MapVisualizer({
   );
 
   const statisticTotal = useMemo(() => {
-    return getStatistic(data[mapCode]);
-  }, [data, mapCode, getStatistic]);
+    return getMapStatistic(data[mapCode]);
+  }, [data, mapCode, getMapStatistic]);
+
+  const statisticConfig = STATISTIC_CONFIGS[statistic];
 
   const strokeColor = useCallback(
-    (alpha) => {
-      return STATISTIC_CONFIGS[statistic].color + alpha;
-    },
-    [statistic]
+    (alpha) => (statisticConfig?.color || '#343a40') + alpha,
+    [statisticConfig]
   );
 
   const features = useMemo(() => {
     if (!geoData) return null;
+
     const featuresWrap = !isDistrictView
       ? feature(geoData, geoData.objects.states).features
       : mapMeta.mapType === MAP_TYPES.COUNTRY && mapViz === MAP_VIZS.BUBBLES
@@ -100,7 +108,6 @@ function MapVisualizer({
           ...feature(geoData, geoData.objects.districts).features,
         ]
       : feature(geoData, geoData.objects.districts).features;
-
     // Add id to each feature
     return featuresWrap.map((feature) => {
       const district = feature.properties.district;
@@ -132,33 +139,50 @@ function MapVisualizer({
         stateCode !== 'TT' && Object.keys(MAP_META).includes(stateCode)
     );
 
-    return !isDistrictView
-      ? max(stateCodes, (stateCode) => getStatistic(data[stateCode]))
-      : max(stateCodes, (stateCode) => {
-          const districts = Object.keys(
-            data[stateCode]?.districts || []
-          ).filter(
-            (districtName) =>
-              (districtsSet?.[stateCode] || new Set()).has(districtName) ||
-              (mapViz === MAP_VIZS.BUBBLES &&
-                districtName === UNKNOWN_DISTRICT_KEY)
-          );
-          return districts && districts.length > 0
-            ? max(districts, (districtName) =>
-                getStatistic(data[stateCode].districts[districtName])
-              )
-            : 0;
-        });
-  }, [data, isDistrictView, getStatistic, mapViz, districtsSet]);
+    if (!isDistrictView) {
+      return max(stateCodes, (stateCode) =>
+        transformStatistic(getMapStatistic(data[stateCode]))
+      );
+    } else {
+      const districtData = stateCodes.reduce((res, stateCode) => {
+        const districts = Object.keys(data[stateCode]?.districts || []).filter(
+          (districtName) =>
+            (districtsSet?.[stateCode] || new Set()).has(districtName) ||
+            (mapViz === MAP_VIZS.BUBBLES &&
+              districtName === UNKNOWN_DISTRICT_KEY)
+        );
+        res.push(
+          ...districts.map((districtName) =>
+            transformStatistic(
+              getMapStatistic(data[stateCode].districts[districtName])
+            )
+          )
+        );
+        return res;
+      }, []);
+      return max(districtData);
+    }
+  }, [
+    data,
+    isDistrictView,
+    getMapStatistic,
+    mapViz,
+    districtsSet,
+    transformStatistic,
+  ]);
 
   const mapScale = useMemo(() => {
     if (mapViz === MAP_VIZS.BUBBLES) {
-      return scaleSqrt([0, Math.max(statisticMax, 1)], [0, 40])
+      // No negative values
+      return scaleSqrt([0, Math.max(1, statisticMax || 0)], [0, 40])
         .clamp(true)
         .nice(3);
+    } else if (STATISTIC_CONFIGS[statistic]?.mapConfig?.colorScale) {
+      return STATISTIC_CONFIGS[statistic].mapConfig.colorScale;
     } else {
+      // No negative values
       return scaleSequential(
-        [0, Math.max(1, statisticMax)],
+        [0, Math.max(1, statisticMax || 0)],
         colorInterpolator(statistic)
       ).clamp(true);
     }
@@ -170,22 +194,19 @@ function MapVisualizer({
       const district = d.properties.district;
       const stateData = data[stateCode];
       const districtData = stateData?.districts?.[district];
-      let n;
-      if (district) n = getStatistic(districtData);
-      else n = getStatistic(stateData);
-      const color = n === 0 ? '#ffffff00' : mapScale(n);
+      const n = transformStatistic(
+        getMapStatistic(district ? districtData : stateData)
+      );
+      const color = n ? mapScale(n) : '#ffffff00';
       return color;
     },
-    [data, mapScale, getStatistic]
+    [data, mapScale, getMapStatistic, transformStatistic]
   );
 
   const populateTexts = useCallback(
     (regionSelection) => {
       regionSelection.select('title').text((d) => {
-        if (
-          mapViz === MAP_VIZS.BUBBLES &&
-          !STATISTIC_CONFIGS[statistic]?.nonLinear
-        ) {
+        if (mapViz === MAP_VIZS.BUBBLES && !statisticConfig?.nonLinear) {
           const state = d.properties.st_nm;
           const stateCode = STATE_CODES[state];
           const district = d.properties.district;
@@ -193,8 +214,8 @@ function MapVisualizer({
           const stateData = data[stateCode];
           const districtData = stateData?.districts?.[district];
           let n;
-          if (district) n = getStatistic(districtData);
-          else n = getStatistic(stateData);
+          if (district) n = getMapStatistic(districtData);
+          else n = getMapStatistic(stateData);
           return `${formatNumber(
             100 * (n / (statisticTotal || 0.001)),
             '%'
@@ -202,7 +223,7 @@ function MapVisualizer({
         }
       });
     },
-    [mapViz, data, getStatistic, statisticTotal, statistic]
+    [mapViz, data, getMapStatistic, statisticTotal, statisticConfig]
   );
 
   const onceTouchedRegion = useRef(null);
@@ -323,13 +344,13 @@ function MapVisualizer({
           const stateData = data[stateCode];
 
           if (!isDistrictView) {
-            feature.value = getStatistic(stateData);
+            feature.value = getMapStatistic(stateData);
           } else {
             const districtData = stateData?.districts?.[districtName];
 
-            if (districtName) feature.value = getStatistic(districtData);
+            if (districtName) feature.value = getMapStatistic(districtData);
             else
-              feature.value = getStatistic(
+              feature.value = getMapStatistic(
                 stateData?.districts?.[UNKNOWN_DISTRICT_KEY]
               );
           }
@@ -393,8 +414,8 @@ function MapVisualizer({
       .call((sel) => {
         sel
           .transition(T)
-          .attr('fill', STATISTIC_CONFIGS[statistic].color + '70')
-          .attr('stroke', STATISTIC_CONFIGS[statistic].color + '70')
+          .attr('fill', statisticConfig.color + '70')
+          .attr('stroke', statisticConfig.color + '70')
           .attr('r', (feature) => mapScale(feature.value));
       });
 
@@ -412,8 +433,8 @@ function MapVisualizer({
     path,
     setRegionHighlighted,
     populateTexts,
-    statistic,
-    getStatistic,
+    statisticConfig,
+    getMapStatistic,
   ]);
 
   // Boundaries
@@ -533,6 +554,9 @@ function MapVisualizer({
       <div className="svg-parent">
         <svg
           id="chart"
+          className={classnames({
+            zone: !!statisticConfig?.mapConfig?.colorScale,
+          })}
           viewBox={`0 0 ${width} ${height}`}
           preserveAspectRatio="xMidYMid meet"
           ref={svgRef}
@@ -543,7 +567,9 @@ function MapVisualizer({
           <g className="circles" />
         </svg>
         {mapMeta.mapType === MAP_TYPES.STATE &&
-          !!getStatistic(data[mapCode]?.districts?.[UNKNOWN_DISTRICT_KEY]) && (
+          !!getMapStatistic(
+            data[mapCode]?.districts?.[UNKNOWN_DISTRICT_KEY]
+          ) && (
             <div className={classnames('disclaimer', `is-${statistic}`)}>
               <AlertIcon />
               <span>

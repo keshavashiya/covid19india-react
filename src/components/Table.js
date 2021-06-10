@@ -1,6 +1,8 @@
 import HeaderCell from './HeaderCell';
 import TableLoader from './loaders/Table';
+import {Delta7Icon, DistrictIcon, PerLakhIcon} from './snippets/Icons';
 import TableDeltaHelper from './snippets/TableDeltaHelper';
+import Tooltip from './Tooltip';
 
 import {TABLE_FADE_IN, TABLE_FADE_OUT} from '../animations';
 import {
@@ -8,22 +10,25 @@ import {
   STATE_NAMES,
   STATISTIC_CONFIGS,
   TABLE_STATISTICS,
-  TABLE_STATISTICS_EXPANDED,
+  TABLE_STATISTICS_ALL,
   UNASSIGNED_STATE_CODE,
 } from '../constants';
-import {getTableStatistic, retry} from '../utils/commonFunctions';
+import {getStatistic, retry} from '../utils/commonFunctions';
 
 import {
-  FilterIcon,
   FoldDownIcon,
   InfoIcon,
   OrganizationIcon,
+  PeopleIcon,
+  PulseIcon,
   QuestionIcon,
+  SortAscIcon,
+  SortDescIcon,
 } from '@primer/octicons-react';
 import classnames from 'classnames';
 import equal from 'fast-deep-equal';
 import produce from 'immer';
-import {memo, useCallback, useEffect, useState, lazy} from 'react';
+import {memo, useCallback, useEffect, useMemo, useState, lazy} from 'react';
 import {
   ChevronLeft,
   ChevronsLeft,
@@ -47,8 +52,9 @@ function Table({
   expandTable,
   setExpandTable,
   hideDistrictData,
+  hideDistrictTestData,
   hideVaccinated,
-  lastUpdated,
+  lastUpdatedDate,
 }) {
   const {t} = useTranslation();
   const [sortData, setSortData] = useSessionStorage('sortData', {
@@ -57,12 +63,19 @@ function Table({
     delta: false,
   });
   const [page, setPage] = useState(0);
+  const [delta7Mode, setDelta7Mode] = useState(false);
 
   const handleSortClick = useCallback(
     (statistic) => {
       if (sortData.sortColumn !== statistic) {
         setSortData(
           produce(sortData, (draftSortData) => {
+            if (
+              sortData.sortColumn === 'regionName' ||
+              statistic === 'regionName'
+            ) {
+              draftSortData.isAscending = !sortData.isAscending;
+            }
             draftSortData.sortColumn = statistic;
           })
         );
@@ -77,17 +90,52 @@ function Table({
     [sortData, setSortData]
   );
 
-  const trail = useTrail(3, {
+  const trail = useTrail(5, {
     from: {transform: 'translate3d(0, 10px, 0)', opacity: 0},
     to: {transform: 'translate3d(0, 0px, 0)', opacity: 1},
     config: config.wobbly,
   });
 
-  const [districts, setDistricts] = useState();
+  const [allDistricts, setAllDistricts] = useState();
 
   const [tableOption, setTableOption] = useState('States');
   const [isPerLakh, setIsPerLakh] = useState(false);
   const [isInfoVisible, setIsInfoVisible] = useState(false);
+
+  const getTableStatistic = useCallback(
+    (data, statistic, type) => {
+      const statisticConfig = STATISTIC_CONFIGS[statistic];
+      if (statisticConfig?.tableConfig?.type && type == 'total') {
+        type = statisticConfig.tableConfig.type;
+      }
+
+      if (statisticConfig?.showDelta && type === 'total' && delta7Mode) {
+        type = 'delta7';
+      }
+
+      return getStatistic(data, type, statistic, {
+        expiredDate: lastUpdatedDate,
+        normalizedByPopulationPer: isPerLakh ? 'lakh' : null,
+      });
+    },
+    [isPerLakh, lastUpdatedDate, delta7Mode]
+  );
+
+  const districts = useMemo(() => {
+    if (!isPerLakh) {
+      return allDistricts;
+    } else {
+      return Object.keys(allDistricts || {})
+        .filter(
+          (districtKey) =>
+            getStatistic(allDistricts[districtKey], 'total', 'population') > 0
+        )
+        .reduce((res, districtKey) => {
+          res[districtKey] = allDistricts[districtKey];
+          return res;
+        }, {});
+    }
+  }, [isPerLakh, allDistricts]);
 
   const numPages = Math.ceil(
     Object.keys(districts || {}).length / DISTRICT_TABLE_COUNT
@@ -98,26 +146,18 @@ function Table({
       if (sortData.sortColumn !== 'regionName') {
         const statisticConfig = STATISTIC_CONFIGS[sortData.sortColumn];
         const dataType =
-          sortData.delta && statisticConfig?.tableConfig?.showDelta
-            ? 'delta'
-            : 'total';
+          sortData.delta && statisticConfig?.showDelta ? 'delta' : 'total';
 
         const statisticA = getTableStatistic(
           districts?.[regionKeyA] || states[regionKeyA],
           sortData.sortColumn,
-          {
-            expiredDate: lastUpdated,
-            normalizedByPopulationPer: isPerLakh ? 'lakh' : null,
-          }
-        )[dataType];
+          dataType
+        );
         const statisticB = getTableStatistic(
           districts?.[regionKeyB] || states[regionKeyB],
           sortData.sortColumn,
-          {
-            expiredDate: lastUpdated,
-            normalizedByPopulationPer: isPerLakh ? 'lakh' : null,
-          }
-        )[dataType];
+          dataType
+        );
         return sortData.isAscending
           ? statisticA - statisticB
           : statisticB - statisticA;
@@ -133,8 +173,7 @@ function Table({
     },
     [
       districts,
-      isPerLakh,
-      lastUpdated,
+      getTableStatistic,
       sortData.delta,
       sortData.isAscending,
       sortData.sortColumn,
@@ -153,7 +192,7 @@ function Table({
     workerInstance.getDistricts(states);
     workerInstance.addEventListener('message', (message) => {
       if (message.data.type !== 'RPC') {
-        setDistricts(message.data);
+        setAllDistricts(message.data);
         workerInstance.terminate();
       }
     });
@@ -180,11 +219,14 @@ function Table({
   });
 
   const tableStatistics = (
-    expandTable ? TABLE_STATISTICS_EXPANDED : TABLE_STATISTICS
+    expandTable ? TABLE_STATISTICS_ALL : TABLE_STATISTICS
   ).filter(
     (statistic) =>
-      !(STATISTIC_CONFIGS[statistic]?.category === 'vaccinated') ||
-      !hideVaccinated
+      (tableOption === 'States' ||
+        STATISTIC_CONFIGS[statistic]?.category !== 'tested' ||
+        !hideDistrictTestData) &&
+      (STATISTIC_CONFIGS[statistic]?.category !== 'vaccinated' ||
+        !hideVaccinated)
   );
 
   const showDistricts = tableOption === 'Districts' && !hideDistrictData;
@@ -200,45 +242,66 @@ function Table({
   return (
     <div className="Table">
       <div className="table-top">
-        <animated.div
-          className={classnames('option-toggle', {
-            'is-highlighted': showDistricts,
-          })}
-          onClick={_setTableOption}
-          style={trail[0]}
-        >
-          <OrganizationIcon size={14} />
-        </animated.div>
+        <div className="table-top-left">
+          <Tooltip message={'Toggle between states/districts'} hold>
+            <animated.div
+              className={classnames('toggle', 'option-toggle', {
+                'is-highlighted': showDistricts,
+                disabled: hideDistrictData,
+              })}
+              onClick={_setTableOption}
+              style={trail[0]}
+            >
+              <DistrictIcon />
+            </animated.div>
+          </Tooltip>
 
-        <animated.div
-          className={classnames('lakh-toggle', {
-            'is-highlighted': isPerLakh,
-          })}
-          onClick={setIsPerLakh.bind(this, !isPerLakh)}
-          style={trail[0]}
-        >
-          <span>1L </span>
-        </animated.div>
+          <Tooltip message={'Per lakh people'} hold>
+            <animated.div
+              className={classnames('toggle', 'lakh-toggle', {
+                'is-highlighted': isPerLakh,
+              })}
+              onClick={setIsPerLakh.bind(this, !isPerLakh)}
+              style={trail[1]}
+            >
+              <PerLakhIcon />
+            </animated.div>
+          </Tooltip>
 
-        <animated.div
-          className={classnames('info-toggle', {
-            'is-highlighted': isInfoVisible,
-          })}
-          onClick={setIsInfoVisible.bind(this, !isInfoVisible)}
-          style={trail[0]}
-        >
-          <QuestionIcon size={14} />
-        </animated.div>
+          <Tooltip message={'Last 7 day values'} hold>
+            <animated.div
+              className={classnames('toggle', 'delta-toggle', {
+                'is-highlighted': delta7Mode,
+              })}
+              style={trail[2]}
+              onClick={setDelta7Mode.bind(this, !delta7Mode)}
+            >
+              <Delta7Icon />
+            </animated.div>
+          </Tooltip>
 
-        <animated.div
-          className={classnames('expand-table-toggle', {
-            'is-highlighted': expandTable,
-          })}
-          style={trail[1]}
-          onClick={setExpandTable.bind(this, !expandTable)}
-        >
-          <FoldDownIcon size={16} />
-        </animated.div>
+          <animated.div
+            className={classnames('toggle', 'info-toggle', {
+              'is-highlighted': isInfoVisible,
+            })}
+            onClick={setIsInfoVisible.bind(this, !isInfoVisible)}
+            style={trail[3]}
+          >
+            <QuestionIcon size={14} />
+          </animated.div>
+        </div>
+
+        <Tooltip message={`${expandTable ? 'Collapse' : 'Expand'} table`} hold>
+          <animated.div
+            className={classnames('toggle', 'expand-table-toggle', {
+              'is-highlighted': expandTable,
+            })}
+            style={trail[4]}
+            onClick={setExpandTable.bind(this, !expandTable)}
+          >
+            <FoldDownIcon size={16} />
+          </animated.div>
+        </Tooltip>
       </div>
 
       {transition(
@@ -248,29 +311,38 @@ function Table({
               <div className="helper-top">
                 <div className="helper-left">
                   <div className="info-item">
-                    <span>
+                    <div>
                       <OrganizationIcon size={14} />
-                    </span>
+                    </div>
                     <p>{t('Toggle between States/Districts')}</p>
                   </div>
 
                   <div className="info-item">
-                    <h5>1L</h5>
+                    <div>
+                      <PeopleIcon size={16} />
+                    </div>
                     <p>{t('Per Lakh People')}</p>
                   </div>
 
-                  <div className="info-item sort">
-                    <span>
-                      <FilterIcon size={14} />
-                    </span>
-                    <p>{t('Sort by Descending')}</p>
+                  <div className="info-item">
+                    <div>
+                      <PulseIcon size={16} />
+                    </div>
+                    <p>{t('Last 7 day values')}</p>
                   </div>
 
-                  <div className="info-item sort invert">
-                    <span>
-                      <FilterIcon size={14} />
-                    </span>
-                    <p>{t('Sort by Ascending')}</p>
+                  <div className="info-item sort">
+                    <div>
+                      <SortDescIcon size={14} />
+                    </div>
+                    <p>{t('Sorted by Descending')}</p>
+                  </div>
+
+                  <div className="info-item sort">
+                    <div>
+                      <SortAscIcon size={14} />
+                    </div>
+                    <p>{t('Sorted by Ascending')}</p>
                   </div>
 
                   <div className="info-item sort">
@@ -278,31 +350,24 @@ function Table({
                   </div>
 
                   <div className="info-item notes">
-                    <span>
+                    <div>
                       <InfoIcon size={15} />
-                    </span>
+                    </div>
                     <p>{t('Notes')}</p>
                   </div>
                 </div>
+
                 <div className="helper-right">
                   <div className="info-item">
                     <p>{t('Units')}</p>
                   </div>
                   {Object.entries({'1K': 3, '1L': 5, '1Cr': 7}).map(
                     ([abbr, exp]) => (
-                      <div className="info-item" key={abbr}>
+                      <div className="info-item abbr" key={abbr}>
                         <h5>{abbr}</h5>
                         <p>
                           10
-                          <sup
-                            style={{
-                              verticalAlign: 'baseline',
-                              position: 'relative',
-                              top: '-.4em',
-                            }}
-                          >
-                            {exp}
-                          </sup>
+                          <sup>{exp}</sup>
                         </p>
                       </div>
                     )
@@ -332,12 +397,12 @@ function Table({
             >
               <div>{t(!showDistricts ? 'State/UT' : 'District')}</div>
               {sortData.sortColumn === 'regionName' && (
-                <div
-                  className={classnames('sort-icon', {
-                    invert: sortData.isAscending,
-                  })}
-                >
-                  <FilterIcon size={10} />
+                <div className={'sort-icon'}>
+                  {sortData.isAscending ? (
+                    <SortAscIcon size={12} />
+                  ) : (
+                    <SortDescIcon size={12} />
+                  )}
                 </div>
               )}
             </div>
@@ -345,7 +410,11 @@ function Table({
             {tableStatistics.map((statistic) => (
               <HeaderCell
                 key={statistic}
-                {...{statistic, sortData, setSortData}}
+                {...{
+                  statistic,
+                  sortData,
+                  setSortData,
+                }}
                 handleSort={handleSortClick.bind(this, statistic)}
               />
             ))}
@@ -366,12 +435,11 @@ function Table({
                     data={states[stateCode]}
                     {...{
                       stateCode,
-                      isPerLakh,
                       regionHighlighted,
                       setRegionHighlighted,
                       expandTable,
-                      lastUpdated,
                       tableStatistics,
+                      getTableStatistic,
                     }}
                   />
                 );
@@ -394,12 +462,11 @@ function Table({
                     data={districts[districtKey]}
                     districtName={districts[districtKey].districtName}
                     {...{
-                      isPerLakh,
                       regionHighlighted,
                       setRegionHighlighted,
                       expandTable,
-                      lastUpdated,
                       tableStatistics,
+                      getTableStatistic,
                     }}
                   />
                 );
@@ -410,12 +477,11 @@ function Table({
             data={states['TT']}
             stateCode={'TT'}
             {...{
-              isPerLakh,
               regionHighlighted,
               setRegionHighlighted,
               expandTable,
-              lastUpdated,
               tableStatistics,
+              getTableStatistic,
             }}
           />
         </div>
@@ -471,7 +537,14 @@ const isEqual = (prevProps, currProps) => {
   } else if (!equal(prevProps.date, currProps.date)) {
     return false;
   } else if (!equal(prevProps.hideDistrictData, currProps.hideDistrictData)) {
+    return false;
+  } else if (
+    !equal(prevProps.hideDistrictTestData, currProps.hideDistrictTestData)
+  ) {
+    return false;
   } else if (!equal(prevProps.hideVaccinated, currProps.hideVaccinated)) {
+    return false;
+  } else if (!equal(prevProps.expandTable, currProps.expandTable)) {
     return false;
   } else if (
     !equal(
@@ -479,8 +552,6 @@ const isEqual = (prevProps, currProps) => {
       currProps.data['TT'].total.confirmed
     )
   ) {
-    return false;
-  } else if (!equal(prevProps.expandTable, currProps.expandTable)) {
     return false;
   } else return true;
 };

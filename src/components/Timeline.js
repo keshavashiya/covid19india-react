@@ -5,7 +5,7 @@ import {
   retry,
 } from '../utils/commonFunctions';
 
-import {HeartFillIcon} from '@primer/octicons-react';
+import {CalendarIcon, HeartFillIcon} from '@primer/octicons-react';
 import classnames from 'classnames';
 import equal from 'fast-deep-equal';
 import {useKeenSlider} from 'keen-slider/react';
@@ -20,7 +20,7 @@ import {
   Suspense,
 } from 'react';
 import ReactDOM from 'react-dom';
-import {FastForward, Play as Play, Pause as Pause} from 'react-feather';
+import {FastForward, Play, Pause} from 'react-feather';
 import {useTranslation} from 'react-i18next';
 import {useTransition, animated} from 'react-spring';
 import {useClickAway, useKeyPressEvent} from 'react-use';
@@ -226,6 +226,16 @@ function Timeline({date, setDate, dates, isTimelineMode, setIsTimelineMode}) {
                   <h5 {...{className}} onClick={handleClick.bind(this, slide)}>
                     {formatSlideDate(dates[slide])}
                   </h5>
+                  <div
+                    className={classnames('calendar-icon', {
+                      show: slide === sliderState?.absoluteSlide,
+                    })}
+                    onClick={setShowCalendar.bind(this, !showCalendar)}
+                  >
+                    {slide !== sliderState.size - 1 && (
+                      <CalendarIcon size={12} />
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

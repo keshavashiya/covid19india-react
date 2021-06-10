@@ -1,4 +1,6 @@
-// export const API_DOMAIN = 'http://192.168.1.69:8080';
+import {scaleOrdinal} from 'd3-scale';
+
+// export const API_DOMAIN = 'http://localhost:8080';
 // export const API_DOMAIN =
 //   'https://raw.githubusercontent.com/shuklaayush/api/test/tmp';
 export const API_DOMAIN = 'https://api.covid19india.org';
@@ -24,9 +26,7 @@ export const STATISTIC_CONFIGS = {
     displayName: 'confirmed',
     color: '#ff073a',
     format: 'long',
-    tableConfig: {
-      showDelta: true,
-    },
+    showDelta: true,
   },
   active: {
     displayName: 'active',
@@ -37,64 +37,54 @@ export const STATISTIC_CONFIGS = {
     displayName: 'recovered',
     color: '#28a745',
     format: 'long',
-    tableConfig: {
-      showDelta: true,
-    },
+    showDelta: true,
   },
   deceased: {
     displayName: 'deceased',
     color: '#6c757d',
     format: 'long',
-    tableConfig: {
-      showDelta: true,
-    },
+    showDelta: true,
   },
   other: {
     displayName: 'other',
     format: 'long',
+    color: '#fd7e14',
+    showDelta: true,
     tableConfig: {
-      showDelta: true,
+      notes: 'Migrated cases or non-COVID deaths',
     },
   },
   tested: {
     displayName: 'tested',
     color: '#4b1eaa',
     format: 'short',
+    showDelta: true,
     hideZero: true,
     category: 'tested',
-    tableConfig: {
-      showDelta: true,
-    },
   },
   vaccinated1: {
-    displayName: 'vaccinated with at least one dose',
+    displayName: 'vaccinated (at least one dose)',
     color: '#fb5581',
     format: 'short',
+    showDelta: true,
     hideZero: true,
     category: 'vaccinated',
-    tableConfig: {
-      showDelta: true,
-    },
   },
   vaccinated2: {
     displayName: 'fully vaccinated',
     color: '#fb5581',
     format: 'short',
+    showDelta: true,
     hideZero: true,
     category: 'vaccinated',
-    tableConfig: {
-      showDelta: true,
-    },
   },
   vaccinated: {
     displayName: 'vaccine doses administered',
     color: '#fb5581',
     format: 'short',
+    showDelta: true,
     hideZero: true,
     category: 'vaccinated',
-    tableConfig: {
-      showDelta: true,
-    },
   },
   tpr: {
     displayName: 'test positivity ratio',
@@ -105,13 +95,13 @@ export const STATISTIC_CONFIGS = {
     category: 'tested',
     tableConfig: {
       type: 'delta7',
-      displayName: 'test positivity ratio (last 7 days)',
+      notes: 'Calculated over last 7 days',
     },
   },
   cfr: {
     displayName: 'case fatality ratio',
     format: '%',
-    color: '#6c757d',
+    color: '#fd7e14',
     nonLinear: true,
   },
   recoveryRatio: {
@@ -130,9 +120,32 @@ export const STATISTIC_CONFIGS = {
       hide: true,
     },
   },
+  caseGrowth: {
+    displayName: 'Case Growth',
+    format: '%',
+    nonLinear: true,
+    canBeInfinite: true,
+    tableConfig: {
+      notes:
+        'Percentage growth of cases last week compared to the week a fortnight ago',
+    },
+    mapConfig: {
+      transformFn: (val) => {
+        if (val <= 0) return '≤ 0%';
+        else if (val <= 20) return '0 - 20%';
+        else if (val <= 50) return '20 - 50%';
+        else if (val > 50) return '> 50%';
+      },
+      colorScale: scaleOrdinal(
+        ['≤ 0%', '0 - 20%', '20 - 50%', '> 50%'],
+        ['#1a9850', '#fee08b', '#fc8d59', '#d73027']
+      ),
+    },
+  },
   population: {
     displayName: 'population',
     format: 'short',
+    color: '#b6854d',
     hideZero: true,
   },
 };
@@ -148,7 +161,7 @@ export const LEVEL_STATISTICS = [...PRIMARY_STATISTICS];
 
 export const TABLE_STATISTICS = [...PRIMARY_STATISTICS, 'tested', 'vaccinated'];
 
-export const TABLE_STATISTICS_EXPANDED = Object.keys(STATISTIC_CONFIGS).filter(
+export const TABLE_STATISTICS_ALL = Object.keys(STATISTIC_CONFIGS).filter(
   (statistic) => !STATISTIC_CONFIGS[statistic]?.tableConfig?.hide
 );
 
@@ -177,7 +190,9 @@ export const UNASSIGNED_STATE_CODE = 'UN';
 
 export const UNKNOWN_DISTRICT_KEY = 'Unknown';
 
-export const GOSPEL_DATE = '2020-04-26';
+export const DISTRICT_START_DATE = '2020-04-26';
+
+export const DISTRICT_TEST_END_DATE = '2021-02-02';
 
 export const ISO_DATE_REGEX = /^\d{4}-([0]\d|1[0-2])-([0-2]\d|3[01])$/g;
 
