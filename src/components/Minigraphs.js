@@ -18,7 +18,7 @@ import {line, curveMonotoneX} from 'd3-shape';
 import 'd3-transition';
 import {formatISO, subDays} from 'date-fns';
 import equal from 'fast-deep-equal';
-import {memo, useEffect, useRef, useMemo} from 'react';
+import {memo, useCallback, useEffect, useRef, useMemo} from 'react';
 import {useMeasure} from 'react-use';
 
 // Dimensions
@@ -46,6 +46,13 @@ function Minigraphs({timeseries, date: timelineDate}) {
     return pastDates.filter((date) => date >= cutOffDateLower);
   }, [endDate, timeseries]);
 
+  const getMinigraphStatistic = useCallback(
+    (date, statistic) => {
+      return getStatistic(timeseries?.[date], 'delta', statistic);
+    },
+    [timeseries]
+  );
+
   useEffect(() => {
     if (!width) return;
 
@@ -68,7 +75,7 @@ function Minigraphs({timeseries, date: timelineDate}) {
       const color = STATISTIC_CONFIGS[statistic].color;
 
       const dailyMaxAbs = max(dates, (date) =>
-        Math.abs(getStatistic(timeseries[date], 'delta', statistic))
+        Math.abs(getMinigraphStatistic(date, statistic))
       );
 
       const yScale = scaleLinear()
@@ -79,9 +86,7 @@ function Minigraphs({timeseries, date: timelineDate}) {
       const linePath = line()
         .curve(curveMonotoneX)
         .x((date) => xScale(parseIndiaDate(date)))
-        .y((date) =>
-          yScale(getStatistic(timeseries[date], 'delta', statistic))
-        );
+        .y((date) => yScale(getMinigraphStatistic(date, statistic)));
 
       let pathLength;
       svg
@@ -130,7 +135,7 @@ function Minigraphs({timeseries, date: timelineDate}) {
               .attr('r', 2.5)
               .attr('cx', (date) => xScale(parseIndiaDate(date)))
               .attr('cy', (date) =>
-                yScale(getStatistic(timeseries[date], 'delta', statistic))
+                yScale(getMinigraphStatistic(date, statistic))
               )
               .style('opacity', 0)
               .call((enter) =>
@@ -141,7 +146,7 @@ function Minigraphs({timeseries, date: timelineDate}) {
                   .style('opacity', 1)
                   .attr('cx', (date) => xScale(parseIndiaDate(date)))
                   .attr('cy', (date) =>
-                    yScale(getStatistic(timeseries[date], 'delta', statistic))
+                    yScale(getMinigraphStatistic(date, statistic))
                   )
               ),
           (update) =>
@@ -150,13 +155,13 @@ function Minigraphs({timeseries, date: timelineDate}) {
               .duration(500)
               .attr('cx', (date) => xScale(parseIndiaDate(date)))
               .attr('cy', (date) =>
-                yScale(getStatistic(timeseries[date], 'delta', statistic))
+                yScale(getMinigraphStatistic(date, statistic))
               )
               .style('opacity', 1)
               .selection()
         );
     });
-  }, [endDate, dates, timeseries, width]);
+  }, [endDate, dates, width, getMinigraphStatistic]);
 
   return (
     <div className="Minigraph">

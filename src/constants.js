@@ -27,23 +27,27 @@ export const STATISTIC_CONFIGS = {
     color: '#ff073a',
     format: 'long',
     showDelta: true,
+    hasPrimary: true,
   },
   active: {
     displayName: 'active',
     color: '#007bff',
     format: 'long',
+    hasPrimary: true,
   },
   recovered: {
     displayName: 'recovered',
     color: '#28a745',
     format: 'long',
     showDelta: true,
+    hasPrimary: true,
   },
   deceased: {
     displayName: 'deceased',
     color: '#6c757d',
     format: 'long',
     showDelta: true,
+    hasPrimary: true,
   },
   other: {
     displayName: 'other',
@@ -53,6 +57,7 @@ export const STATISTIC_CONFIGS = {
     tableConfig: {
       notes: 'Migrated cases or non-COVID deaths',
     },
+    hasPrimary: true,
   },
   tested: {
     displayName: 'tested',
@@ -91,18 +96,20 @@ export const STATISTIC_CONFIGS = {
     format: '%',
     color: '#fd7e14',
     nonLinear: true,
+    onlyDelta7: true,
     hideZero: true,
     category: 'tested',
     tableConfig: {
-      type: 'delta7',
       notes: 'Calculated over last 7 days',
     },
+    hasPrimary: true,
   },
   cfr: {
     displayName: 'case fatality ratio',
     format: '%',
     color: '#fd7e14',
     nonLinear: true,
+    hasPrimary: true,
   },
   recoveryRatio: {
     displayName: 'recovery ratio',
@@ -111,6 +118,7 @@ export const STATISTIC_CONFIGS = {
     tableConfig: {
       hide: true,
     },
+    hasPrimary: true,
   },
   activeRatio: {
     displayName: 'active ratio',
@@ -119,6 +127,7 @@ export const STATISTIC_CONFIGS = {
     tableConfig: {
       hide: true,
     },
+    hasPrimary: true,
   },
   caseGrowth: {
     displayName: 'Case Growth',
@@ -129,6 +138,7 @@ export const STATISTIC_CONFIGS = {
       notes:
         'Percentage growth of cases last week compared to the week a fortnight ago',
     },
+    hasPrimary: true,
     mapConfig: {
       transformFn: (val) => {
         if (val <= 0) return '≤ 0%';
@@ -147,6 +157,9 @@ export const STATISTIC_CONFIGS = {
     format: 'short',
     color: '#b6854d',
     hideZero: true,
+    mapConfig: {
+      spike: true,
+    },
   },
 };
 
@@ -161,7 +174,7 @@ export const LEVEL_STATISTICS = [...PRIMARY_STATISTICS];
 
 export const TABLE_STATISTICS = [...PRIMARY_STATISTICS, 'tested', 'vaccinated'];
 
-export const TABLE_STATISTICS_ALL = Object.keys(STATISTIC_CONFIGS).filter(
+export const TABLE_STATISTICS_EXPANDED = Object.keys(STATISTIC_CONFIGS).filter(
   (statistic) => !STATISTIC_CONFIGS[statistic]?.tableConfig?.hide
 );
 
@@ -182,7 +195,7 @@ export const DISTRICT_TABLE_COUNT = 40;
 
 export const D3_TRANSITION_DURATION = 300;
 
-export const MINIGRAPH_LOOKBACK_DAYS = 20;
+export const MINIGRAPH_LOOKBACK_DAYS = 21;
 
 export const TESTED_EXPIRING_DAYS = 7;
 
@@ -209,7 +222,8 @@ export const TIMESERIES_LOOKBACK_DAYS = [null, 90, 30];
 
 export const MAP_VIZS = {
   CHOROPLETH: 0,
-  BUBBLES: 1,
+  BUBBLE: 1,
+  SPIKE: 2,
 };
 
 export const MAP_VIEWS = {
@@ -376,6 +390,7 @@ export const MAP_META = {
   },
 };
 
+export const MAP_DIMENSIONS = [432, 488];
 export const MAP_LEGEND_HEIGHT = 50;
 
 export const STATE_NAMES = {

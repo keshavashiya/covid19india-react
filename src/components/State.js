@@ -1,4 +1,11 @@
-import {DATA_API_ROOT, MAP_STATISTICS, STATE_NAMES} from '../constants';
+import {
+  DATA_API_ROOT,
+  MAP_STATISTICS,
+  PRIMARY_STATISTICS,
+  STATE_NAMES,
+  STATISTIC_CONFIGS,
+  UNKNOWN_DISTRICT_KEY,
+} from '../constants';
 import useIsVisible from '../hooks/useIsVisible';
 import {
   fetcher,
@@ -81,13 +88,15 @@ function State() {
     refreshInterval: 100000,
   });
 
+  const stateData = data?.[stateCode];
+
   const toggleShowAllDistricts = () => {
     setShowAllDistricts(!showAllDistricts);
   };
 
   const handleSort = (districtNameA, districtNameB) => {
-    const districtA = data[stateCode].districts[districtNameA];
-    const districtB = data[stateCode].districts[districtNameB];
+    const districtA = stateData.districts[districtNameA];
+    const districtB = stateData.districts[districtNameB];
     return (
       getStatistic(districtB, 'total', mapStatistic) -
       getStatistic(districtA, 'total', mapStatistic)
@@ -95,16 +104,16 @@ function State() {
   };
 
   const gridRowCount = useMemo(() => {
-    if (!data) return;
+    if (!stateData) return;
     const gridColumnCount = window.innerWidth >= 540 ? 3 : 2;
-    const districtCount = data[stateCode]?.districts
-      ? Object.keys(data[stateCode].districts).filter(
+    const districtCount = stateData?.districts
+      ? Object.keys(stateData.districts).filter(
           (districtName) => districtName !== 'Unknown'
         ).length
       : 0;
     const gridRowCount = Math.ceil(districtCount / gridColumnCount);
     return gridRowCount;
-  }, [data, stateCode]);
+  }, [stateData]);
 
   const stateMetaElement = useRef();
   const isStateMetaVisible = useIsVisible(stateMetaElement);
@@ -123,25 +132,52 @@ function State() {
 
   const lookback = showAllDistricts ? (window.innerWidth >= 540 ? 10 : 8) : 6;
 
-  const lastUpdatedDate = useMemo(() => {
-    if (!data) {
-      return null;
-    }
+  const lastDataDate = useMemo(() => {
     const updatedDates = [
-      data[stateCode]?.meta?.['last_updated'],
-      data[stateCode]?.meta?.tested?.['last_updated'],
-    ];
-    return formatISO(
-      max(
-        updatedDates.filter((date) => date).map((date) => parseIndiaDate(date))
-      ),
-      {representation: 'date'}
-    );
-  }, [stateCode, data]);
+      stateData?.meta?.date,
+      stateData?.meta?.tested?.date,
+      stateData?.meta?.vaccinated?.date,
+    ].filter((date) => date);
+    return updatedDates.length > 0
+      ? formatISO(max(updatedDates.map((date) => parseIndiaDate(date))), {
+          representation: 'date',
+        })
+      : null;
+  }, [stateData]);
 
   const primaryStatistic = MAP_STATISTICS.includes(mapStatistic)
     ? mapStatistic
     : 'confirmed';
+
+  const noDistrictData = useMemo(() => {
+    // Heuristic: All cases are in Unknown
+    return !!(
+      stateData?.districts &&
+      stateData.districts?.[UNKNOWN_DISTRICT_KEY] &&
+      PRIMARY_STATISTICS.every(
+        (statistic) =>
+          getStatistic(stateData, 'total', statistic) ===
+          getStatistic(
+            stateData.districts[UNKNOWN_DISTRICT_KEY],
+            'total',
+            statistic
+          )
+      )
+    );
+  }, [stateData]);
+
+  const statisticConfig = STATISTIC_CONFIGS[primaryStatistic];
+
+  const noRegionHighlightedDistrictData =
+    regionHighlighted?.districtName &&
+    regionHighlighted.districtName !== UNKNOWN_DISTRICT_KEY &&
+    noDistrictData;
+
+  const districts = Object.keys(
+    ((!noDistrictData || !statisticConfig.hasPrimary) &&
+      stateData?.districts) ||
+      {}
+  );
 
   return (
     <>
@@ -157,11 +193,11 @@ function State() {
 
       <div className="State">
         <div className="state-left">
-          <StateHeader data={data?.[stateCode]} stateCode={stateCode} />
+          <StateHeader data={stateData} stateCode={stateCode} />
 
           <div style={{position: 'relative'}}>
             <MapSwitcher {...{mapStatistic, setMapStatistic}} />
-            <Level data={data?.[stateCode]} />
+            <Level data={stateData} />
             <Minigraphs
               timeseries={timeseries?.[stateCode]?.dates}
               {...{stateCode}}
@@ -169,8 +205,8 @@ function State() {
             />
           </div>
 
-          {data?.[stateCode]?.total?.vaccinated1 && (
-            <VaccinationHeader data={data?.[stateCode]} />
+          {stateData?.total?.vaccinated1 && (
+            <VaccinationHeader data={stateData} />
           )}
 
           {data && (
@@ -183,9 +219,11 @@ function State() {
                   setRegionHighlighted,
                   mapStatistic,
                   setMapStatistic,
-                  lastUpdatedDate,
+                  lastDataDate,
                   delta7Mode,
                   setDelta7Mode,
+                  noRegionHighlightedDistrictData,
+                  noDistrictData,
                 }}
               ></MapExplorer>
             </Suspense>
@@ -234,18 +272,18 @@ function State() {
                         : trail[1]
                     }
                   >
-                    {Object.keys(data?.[stateCode]?.districts || {})
+                    {districts
                       .filter((districtName) => districtName !== 'Unknown')
                       .sort((a, b) => handleSort(a, b))
                       .slice(0, showAllDistricts ? undefined : 5)
                       .map((districtName) => {
                         const total = getStatistic(
-                          data[stateCode].districts[districtName],
+                          stateData.districts[districtName],
                           'total',
                           primaryStatistic
                         );
                         const delta = getStatistic(
-                          data[stateCode].districts[districtName],
+                          stateData.districts[districtName],
                           'delta',
                           primaryStatistic
                         );
@@ -307,7 +345,7 @@ function State() {
               </div>
 
               <div className="district-bar-bottom">
-                {Object.keys(data?.[stateCode]?.districts || {}).length > 5 ? (
+                {districts.length > 5 ? (
                   <button
                     className="button fadeInUp"
                     onClick={toggleShowAllDistricts}
@@ -330,6 +368,7 @@ function State() {
                   timeseries,
                   regionHighlighted,
                   setRegionHighlighted,
+                  noRegionHighlightedDistrictData,
                 }}
                 forceRender={!!timeseriesResponseError}
               />

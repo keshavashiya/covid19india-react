@@ -140,10 +140,10 @@ export const getStatistic = (
   if (expiredDate !== null) {
     if (STATISTIC_CONFIGS[statistic]?.category === 'tested') {
       if (
-        !data?.meta?.tested?.['last_updated'] ||
+        !data?.meta?.tested?.date ||
         differenceInDays(
           parseIndiaDate(expiredDate),
-          parseIndiaDate(data?.meta?.tested?.['last_updated'])
+          parseIndiaDate(data.meta.tested.date)
         ) > TESTED_EXPIRING_DAYS
       ) {
         return 0;
@@ -245,3 +245,6 @@ export function retry(fn, retriesLeft = 5, interval = 1000) {
       });
   });
 }
+
+export const spike = (length, width = 8) =>
+  `M${-width / 2},0L0,${-length}L${width / 2},0`;

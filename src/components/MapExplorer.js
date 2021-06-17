@@ -51,13 +51,15 @@ function MapExplorer({
   setMapStatistic,
   regionHighlighted,
   setRegionHighlighted,
+  noRegionHighlightedDistrictData,
   anchor,
   setAnchor,
   expandTable = false,
-  lastUpdatedDate,
+  lastDataDate,
   hideDistrictData = false,
   hideDistrictTestData = true,
   hideVaccinated = false,
+  noDistrictData = false,
 }) {
   const {t} = useTranslation();
   const mapExplorerRef = useRef();
@@ -141,22 +143,24 @@ function MapExplorer({
 
       const type =
         (statisticConfig?.showDelta && delta7Mode) ||
-        statisticConfig?.tableConfig?.type === 'delta7'
+        statisticConfig?.onlyDelta7
           ? 'delta7'
           : 'total';
 
       return getStatistic(data, type, mapStatistic, {
-        expiredDate: lastUpdatedDate,
+        expiredDate: lastDataDate,
         normalizedByPopulationPer:
           isPerLakh && mapStatistic != 'population' ? 'lakh' : null,
         canBeNaN: true,
       });
     },
-    [mapStatistic, isPerLakh, lastUpdatedDate, delta7Mode]
+    [mapStatistic, isPerLakh, lastDataDate, delta7Mode]
   );
 
   let currentVal = getMapStatistic(hoveredRegion);
-  if (isNaN(currentVal)) currentVal = '-';
+  if (isNaN(currentVal)) {
+    currentVal = '-';
+  }
 
   const spring = useSpring({
     total: currentVal,
@@ -189,13 +193,13 @@ function MapExplorer({
     onSwipedRight: handleStatisticChange.bind(this, -1),
   });
 
-  const mapViz =
-    mapStatistic !== 'population' &&
-    (isPerLakh ||
+  const mapViz = statisticConfig?.mapConfig?.spike
+    ? MAP_VIZS.SPIKE
+    : isPerLakh ||
       statisticConfig?.mapConfig?.colorScale ||
-      statisticConfig?.nonLinear)
-      ? MAP_VIZS.CHOROPLETH
-      : MAP_VIZS.BUBBLES;
+      statisticConfig?.nonLinear
+    ? MAP_VIZS.CHOROPLETH
+    : MAP_VIZS.BUBBLE;
 
   const handleDeltaClick = useCallback(() => {
     if (statisticConfig?.showDelta) {
@@ -260,18 +264,21 @@ function MapExplorer({
             >
               <animated.div>
                 {spring.total.to((total) =>
-                  formatNumber(total, statisticConfig.format, mapStatistic)
+                  !noRegionHighlightedDistrictData ||
+                  !statisticConfig?.hasPrimary
+                    ? formatNumber(total, statisticConfig.format, mapStatistic)
+                    : '-'
                 )}
               </animated.div>
               <StatisticDropdown
                 currentStatistic={mapStatistic}
                 statistics={mapStatistics}
+                mapType={mapMeta.mapType}
                 {...{
                   isPerLakh,
                   delta7Mode,
                   mapStatistic,
                   setMapStatistic,
-                  isDistrictView,
                   hideDistrictTestData,
                   hideVaccinated,
                   zoneColor,
@@ -288,7 +295,7 @@ function MapExplorer({
                 className={classnames('toggle', 'fadeInUp', {
                   'is-highlighted':
                     (delta7Mode && statisticConfig?.showDelta) ||
-                    statisticConfig?.tableConfig?.type === 'delta7',
+                    statisticConfig?.onlyDelta7,
                   disabled: !statisticConfig?.showDelta,
                 })}
                 onClick={handleDeltaClick}
@@ -398,6 +405,7 @@ function MapExplorer({
                 setRegionHighlighted,
                 getMapStatistic,
                 transformStatistic,
+                noDistrictData,
               }}
             ></MapVisualizer>
           </Suspense>
@@ -428,6 +436,8 @@ const isEqual = (prevProps, currProps) => {
     return false;
   } else if (!equal(prevProps.hideVaccinated, currProps.hideVaccinated)) {
     return false;
+  } else if (!equal(prevProps.lastDataDate, currProps.lastDataDate)) {
+    return false;
   } else if (
     !equal(
       prevProps.data?.TT?.meta?.['last_updated'],
@@ -436,6 +446,15 @@ const isEqual = (prevProps, currProps) => {
   ) {
     return false;
   } else if (!equal(prevProps.data?.TT?.total, currProps.data?.TT?.total)) {
+    return false;
+  } else if (
+    !equal(
+      prevProps.noRegionHighlightedDistrictData,
+      currProps.noRegionHighlightedDistrictData
+    )
+  ) {
+    return false;
+  } else if (!equal(prevProps.noDistrictData, currProps.noDistrictData)) {
     return false;
   }
   return true;

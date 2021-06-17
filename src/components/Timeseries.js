@@ -40,6 +40,7 @@ function Timeseries({
   isUniform,
   isLog,
   isMovingAverage,
+  noRegionHighlightedDistrictData,
 }) {
   const {t} = useTranslation();
   const refs = useRef([]);
@@ -51,6 +52,15 @@ function Timeseries({
   useEffect(() => {
     setHighlightedDate(dates[dates.length - 1]);
   }, [dates]);
+
+  const getTimeseriesStatistic = useCallback(
+    (date, statistic, movingAverage = isMovingAverage) => {
+      return getStatistic(timeseries?.[date], chartType, statistic, {
+        movingAverage,
+      });
+    },
+    [chartType, isMovingAverage, timeseries]
+  );
 
   const condenseChart = useMemo(() => {
     const T = dates.length;
@@ -101,9 +111,7 @@ function Timeseries({
       dates.reduce((res, date) => {
         res.push(
           ...PRIMARY_STATISTICS.map((statistic) =>
-            getStatistic(timeseries[date], chartType, statistic, {
-              movingAverage: isMovingAverage,
-            })
+            getTimeseriesStatistic(date, statistic)
           )
         );
         return res;
@@ -141,9 +149,7 @@ function Timeseries({
       }
 
       const [scaleMin, scaleMax] = extent(dates, (date) =>
-        getStatistic(timeseries[date], chartType, statistic, {
-          movingAverage: isMovingAverage,
-        })
+        getTimeseriesStatistic(date, statistic)
       );
 
       if (chartType === 'total' && isLog) {
@@ -160,10 +166,7 @@ function Timeseries({
           scaleLinear()
             .clamp(true)
             .domain([
-              // No negative values except delta active
-              chartType === 'total' || statistic !== 'active'
-                ? 0
-                : Math.min(0, scaleMin),
+              Math.min(0, scaleMin),
               STATISTIC_CONFIGS[statistic].format === '%'
                 ? Math.min(100, Math.max(1, scaleMax))
                 : Math.max(1, scaleMax),
@@ -178,10 +181,9 @@ function Timeseries({
     chartType,
     isUniform,
     isLog,
-    isMovingAverage,
     statistics,
     dates,
-    timeseries,
+    getTimeseriesStatistic,
   ]);
 
   useEffect(() => {
@@ -277,25 +279,13 @@ function Timeseries({
             .attr('stroke', statisticConfig?.color)
             .attr('cx', (date) => xScale(parseIndiaDate(date)))
             .attr('cy', (date) =>
-              yScale(
-                isDiscrete
-                  ? 0
-                  : getStatistic(timeseries[date], chartType, statistic, {
-                      movingAverage: isMovingAverage,
-                    })
-              )
+              yScale(isDiscrete ? 0 : getTimeseriesStatistic(date, statistic))
             )
             .attr('r', 2)
         )
         .transition(t)
         .attr('cx', (date) => xScale(parseIndiaDate(date)))
-        .attr('cy', (date) =>
-          yScale(
-            getStatistic(timeseries[date], chartType, statistic, {
-              movingAverage: isMovingAverage,
-            })
-          )
-        );
+        .attr('cy', (date) => yScale(getTimeseriesStatistic(date, statistic)));
 
       const areaPath = (dates, allZero = false) =>
         area()
@@ -305,8 +295,7 @@ function Timeseries({
           .y1(
             allZero
               ? yScale(0)
-              : (date) =>
-                  yScale(getStatistic(timeseries[date], chartType, statistic))
+              : (date) => yScale(getTimeseriesStatistic(date, statistic, false))
           )(dates);
 
       svg
@@ -381,7 +370,7 @@ function Timeseries({
         .attr('y1', yScale(0))
         .attr('x2', (date) => xScale(parseIndiaDate(date)))
         .attr('y2', (date) =>
-          yScale(getStatistic(timeseries[date], chartType, statistic))
+          yScale(getTimeseriesStatistic(date, statistic, false))
         )
         .attr('opacity', isMovingAverage ? 0.2 : 1);
 
@@ -393,11 +382,7 @@ function Timeseries({
           .curve(curve)
           .x((date) => xScale(parseIndiaDate(date)))
           .y((date) =>
-            yScale(
-              getStatistic(timeseries[date], chartType, statistic, {
-                movingAverage,
-              })
-            )
+            yScale(getTimeseriesStatistic(date, statistic, movingAverage))
           );
 
       svg
@@ -478,8 +463,8 @@ function Timeseries({
     xScale,
     yScales,
     statistics,
+    getTimeseriesStatistic,
     dates,
-    timeseries,
   ]);
 
   useEffect(() => {
@@ -505,23 +490,13 @@ function Timeseries({
             .attr('pointer-events', 'none')
             .attr('cx', (date) => xScale(parseIndiaDate(date)))
             .attr('cy', (date) =>
-              yScale(
-                getStatistic(timeseries[date], chartType, statistic, {
-                  movingAverage: isMovingAverage,
-                })
-              )
+              yScale(getTimeseriesStatistic(date, statistic))
             )
             .attr('r', 4)
         )
         .transition(t)
         .attr('cx', (date) => xScale(parseIndiaDate(date)))
-        .attr('cy', (date) =>
-          yScale(
-            getStatistic(timeseries[date], chartType, statistic, {
-              movingAverage: isMovingAverage,
-            })
-          )
-        );
+        .attr('cy', (date) => yScale(getTimeseriesStatistic(date, statistic)));
 
       if (!condenseChart) {
         svg
@@ -530,40 +505,28 @@ function Timeseries({
       }
     });
   }, [
-    chartType,
-    isMovingAverage,
     condenseChart,
     highlightedDate,
     xScale,
     yScales,
     statistics,
-    timeseries,
+    getTimeseriesStatistic,
   ]);
 
-  const getStatisticDelta = useCallback(
+  const getTimeseriesStatisticDelta = useCallback(
     (statistic) => {
       if (!highlightedDate) return;
 
-      const currCount = getStatistic(
-        timeseries?.[highlightedDate],
-        chartType,
-        statistic,
-        {movingAverage: isMovingAverage}
-      );
+      const currCount = getTimeseriesStatistic(highlightedDate, statistic);
       if (STATISTIC_CONFIGS[statistic]?.hideZero && currCount === 0) return;
 
       const prevDate =
         dates[dates.findIndex((date) => date === highlightedDate) - 1];
 
-      const prevCount = getStatistic(
-        timeseries?.[prevDate],
-        chartType,
-        statistic,
-        {movingAverage: isMovingAverage}
-      );
+      const prevCount = getTimeseriesStatistic(prevDate, statistic);
       return currCount - prevCount;
     },
-    [timeseries, dates, highlightedDate, chartType, isMovingAverage]
+    [dates, highlightedDate, getTimeseriesStatistic]
   );
 
   const trail = useMemo(
@@ -577,7 +540,8 @@ function Timeseries({
   return (
     <div className="Timeseries">
       {statistics.map((statistic, index) => {
-        const delta = getStatisticDelta(statistic, index);
+        const total = getTimeseriesStatistic(highlightedDate, statistic);
+        const delta = getTimeseriesStatisticDelta(statistic, index);
         const statisticConfig = STATISTIC_CONFIGS[statistic];
         return (
           <div
@@ -594,26 +558,29 @@ function Timeseries({
                 <h5>{formatDate(highlightedDate, 'dd MMMM')}</h5>
                 <div className="stats-bottom">
                   <h2>
-                    {formatNumber(
-                      getStatistic(
-                        timeseries?.[highlightedDate],
-                        chartType,
-                        statistic,
-                        {movingAverage: isMovingAverage}
-                      ),
-                      statisticConfig.format !== 'short'
-                        ? statisticConfig.format
-                        : 'long',
-                      statistic
-                    )}
+                    {!noRegionHighlightedDistrictData ||
+                    !statisticConfig?.hasPrimary
+                      ? formatNumber(
+                          total,
+                          statisticConfig.format !== 'short'
+                            ? statisticConfig.format
+                            : 'long',
+                          statistic
+                        )
+                      : '-'}
                   </h2>
-                  <h6>{`${delta > 0 ? '+' : ''}${formatNumber(
-                    delta,
-                    statisticConfig.format !== 'short'
-                      ? statisticConfig.format
-                      : 'long',
-                    statistic
-                  )}`}</h6>
+                  <h6>
+                    {!noRegionHighlightedDistrictData ||
+                    !statisticConfig?.hasPrimary
+                      ? `${delta > 0 ? '+' : ''}${formatNumber(
+                          delta,
+                          statisticConfig.format !== 'short'
+                            ? statisticConfig.format
+                            : 'long',
+                          statistic
+                        )}`
+                      : ''}
+                  </h6>
                 </div>
               </div>
             )}
@@ -656,6 +623,13 @@ const isEqual = (prevProps, currProps) => {
     !equal(
       currProps.regionHighlighted.districtName,
       prevProps.regionHighlighted.districtName
+    )
+  ) {
+    return false;
+  } else if (
+    !equal(
+      currProps.noRegionHighlightedDistrictData,
+      prevProps.noRegionHighlightedDistrictData
     )
   ) {
     return false;

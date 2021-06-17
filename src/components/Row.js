@@ -22,7 +22,7 @@ import {
 import classnames from 'classnames';
 import equal from 'fast-deep-equal';
 import produce from 'immer';
-import {memo, useState, useCallback, useRef} from 'react';
+import {memo, useCallback, useRef, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {useHistory} from 'react-router-dom';
 import {useSessionStorage} from 'react-use';
@@ -36,6 +36,8 @@ function Row({
   setRegionHighlighted,
   expandTable,
   getTableStatistic,
+  tableWidth,
+  noDistrictData,
 }) {
   const [showDistricts, setShowDistricts] = useState(false);
   const [sortData, setSortData] = useSessionStorage('districtSortData', {
@@ -193,6 +195,11 @@ function Row({
         {tableStatistics.map((statistic) => (
           <Cell
             key={statistic}
+            noDistrictData={
+              !stateCode &&
+              districtName !== UNKNOWN_DISTRICT_KEY &&
+              noDistrictData
+            }
             {...{
               data,
               statistic,
@@ -204,8 +211,15 @@ function Row({
 
       {showDistricts && (
         <>
-          <div className="state-meta">
+          <div className="state-meta" style={{width: tableWidth}}>
             <div className="state-meta-top">
+              <div
+                className="state-page"
+                onClick={handleStatePageClick.bind(this, stateCode)}
+              >
+                <GraphIcon />
+                <span>{t('See more details')}</span>
+              </div>
               {data?.meta?.['last_updated'] && (
                 <p className="last-updated">
                   <ClockIcon />
@@ -214,17 +228,6 @@ function Row({
                   )}
                 </p>
               )}
-              <div
-                className="state-page"
-                onClick={handleStatePageClick.bind(this, stateCode)}
-              >
-                <GraphIcon />
-                <span>
-                  {t('See more details on {{state}}', {
-                    state: stateCode,
-                  })}
-                </span>
-              </div>
             </div>
 
             {data.districts && UNKNOWN_DISTRICT_KEY in data.districts && (
@@ -274,6 +277,9 @@ function Row({
             <DistrictRow
               data={data.districts[districtName]}
               key={districtName}
+              noDistrictData={
+                districtName !== UNKNOWN_DISTRICT_KEY && noDistrictData
+              }
               {...{
                 tableStatistics,
                 districtName,
@@ -287,7 +293,7 @@ function Row({
           ))}
 
       {showDistricts && (
-        <div className="spacer-row">
+        <div className="spacer-row" style={{width: tableWidth}}>
           <div className="spacer">
             <p>{`End of ${t(STATE_NAMES[stateCode])}'s districts`}</p>
             <div className="fold" onClick={handleCollapse}>
@@ -327,6 +333,10 @@ const isEqual = (prevProps, currProps) => {
   ) {
     return false;
   } else if (!equal(prevProps.expandTable, currProps.expandTable)) {
+    return false;
+  } else if (!equal(prevProps.noDistrictData, currProps.noDistrictData)) {
+    return false;
+  } else if (!equal(prevProps.tableWidth, currProps.tableWidth)) {
     return false;
   } else if (!equal(prevProps.getTableStatistic, currProps.getTableStatistic)) {
     return false;

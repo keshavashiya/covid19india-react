@@ -1,6 +1,12 @@
-import {TABLE_STATISTICS_ALL, STATISTIC_CONFIGS} from '../constants';
+import {
+  MAP_TYPES,
+  TABLE_STATISTICS_EXPANDED,
+  STATISTIC_CONFIGS,
+} from '../constants';
 import {capitalize} from '../utils/commonFunctions';
 
+import {TriangleRightIcon} from '@primer/octicons-react';
+import classnames from 'classnames';
 import equal from 'fast-deep-equal';
 import {memo, useEffect, useCallback, useMemo, useRef} from 'react';
 import {useTranslation} from 'react-i18next';
@@ -12,7 +18,7 @@ const StatisticDropdown = ({
   delta7Mode,
   mapStatistic,
   setMapStatistic,
-  isDistrictView,
+  mapType,
   hideDistrictTestData,
   hideVaccinated,
   zoneColor,
@@ -24,9 +30,9 @@ const StatisticDropdown = ({
   const currentStatisticConfig = STATISTIC_CONFIGS[currentStatistic];
 
   const statistics = useMemo(() => {
-    const filteredStatistics = TABLE_STATISTICS_ALL.filter(
+    const filteredStatistics = TABLE_STATISTICS_EXPANDED.filter(
       (statistic) =>
-        (!isDistrictView ||
+        (mapType === MAP_TYPES.COUNTRY ||
           STATISTIC_CONFIGS[statistic]?.category !== 'tested' ||
           !hideDistrictTestData) &&
         (STATISTIC_CONFIGS[statistic]?.category !== 'vaccinated' ||
@@ -35,7 +41,7 @@ const StatisticDropdown = ({
     return filteredStatistics.includes(currentStatistic)
       ? filteredStatistics
       : [currentStatistic, ...filteredStatistics];
-  }, [currentStatistic, isDistrictView, hideDistrictTestData, hideVaccinated]);
+  }, [currentStatistic, mapType, hideDistrictTestData, hideVaccinated]);
 
   const handleChange = useCallback(
     (event) => {
@@ -64,19 +70,23 @@ const StatisticDropdown = ({
     tempSelect.remove();
   }, [width, mapStatistic]);
 
-  const statisticColor = zoneColor || currentStatisticConfig?.color;
-
   return (
     <div className="StatisticDropdown" ref={wrapperRef}>
+      <div className={classnames('triangle-icon')}>
+        <TriangleRightIcon size={20} />
+      </div>
       <select
         ref={selectRef}
         value={currentStatistic}
-        className={currentStatistic}
-        style={{
-          color: statisticColor,
-          background: statisticColor + '20',
-          outlineColor: statisticColor + '40',
-        }}
+        className={classnames(currentStatistic, zoneColor)}
+        style={
+          (zoneColor && {
+            color: zoneColor,
+            backgroundColor: zoneColor + '20',
+            outlineColor: zoneColor + '40',
+          }) ||
+          {}
+        }
         onChange={handleChange}
       >
         {statistics.map((statistic) => {
@@ -96,7 +106,7 @@ const StatisticDropdown = ({
           : ''
       }${
         (delta7Mode && currentStatisticConfig?.showDelta) ||
-        currentStatisticConfig?.tableConfig?.type === 'delta7'
+        currentStatisticConfig?.onlyDelta7
           ? ` ${t('in last 7 days')}`
           : ''
       }`}</span>
@@ -113,7 +123,7 @@ const isEqual = (prevProps, currProps) => {
     return false;
   } else if (!equal(prevProps.mapStatistic, currProps.mapStatistic)) {
     return false;
-  } else if (!equal(prevProps.isDistrictView, currProps.isDistrictView)) {
+  } else if (!equal(prevProps.mapType, currProps.mapType)) {
     return false;
   } else if (
     !equal(prevProps.hideDistrictTestData, currProps.hideDistrictTestData)

@@ -59,7 +59,7 @@ $pink-light: #db558120;
 $pink-hover: #db558130;
 $pink-mid: #db558199;
 $brown: #b6854d;
-$brown-light: #b6854d10;
+$brown-light: #b6854d20;
 $brown-hover: #b6854d30;
 $brown-mid: #b6854d99;
 $brick: #e23028;
@@ -594,7 +594,7 @@ h6 {
       }
     }
 
-    &.cpm {
+    &.cpl {
       background: $yellow-light;
 
       h3,
@@ -608,7 +608,7 @@ h6 {
       }
     }
 
-    &.tpm {
+    &.tpl {
       background: $purple-light;
 
       h3,
@@ -690,10 +690,21 @@ h6 {
 .StatisticDropdown {
   margin-left: -3px;
   margin-top: 0.5rem;
+  position: relative;
+
+  .triangle-icon {
+    left: -16px;
+    position: absolute;
+    top: 2px;
+
+    svg {
+      vertical-align: middle !important;
+    }
+  }
 
   select {
     appearance: none;
-    background-color: #eee;
+    background-color: $gray-light;
     border: 0;
     border-radius: 3px;
     color: $gray;
@@ -702,13 +713,91 @@ h6 {
     font-weight: 600;
     max-width: 14rem;
     min-width: 3rem;
+    outline-color: $gray-hover;
     padding: 3px;
-    transition: background 0.2s ease-in-out, color 0.2s ease-in-out;
 
     option {
       background-color: #eee;
       color: $gray;
       padding: 3px;
+    }
+
+    &:hover {
+      background-color: $gray-hover;
+    }
+
+    &.confirmed {
+      background-color: $cherry-light;
+      color: $cherry;
+      outline-color: $cherry-hover;
+
+      &:hover {
+        background-color: $cherry-hover;
+      }
+    }
+
+    &.active {
+      background-color: $blue-light;
+      color: $blue;
+      outline-color: $blue-hover;
+
+      &:hover {
+        background-color: $blue-hover;
+      }
+    }
+
+    &.recovered {
+      background-color: $green-light;
+      color: $green;
+      outline-color: $green-hover;
+
+      &:hover {
+        background-color: $green-hover;
+      }
+    }
+
+    &.tested {
+      background-color: $purple-light;
+      color: $purple;
+      outline-color: $purple-hover;
+
+      &:hover {
+        background-color: $purple-hover;
+      }
+    }
+
+    &.other,
+    &.tpr,
+    &.cfr {
+      background-color: $orange-light;
+      color: $orange;
+      outline-color: $orange-hover;
+
+      &:hover {
+        background-color: $orange-hover;
+      }
+    }
+
+    &.vaccinated,
+    &.vaccinated1,
+    &.vaccinated2 {
+      background-color: $pink-light;
+      color: $pink;
+      outline-color: $pink-hover;
+
+      &:hover {
+        background-color: $pink-hover;
+      }
+    }
+
+    &.population {
+      background-color: $brown-light;
+      color: $brown;
+      outline-color: $brown-hover;
+
+      &:hover {
+        background-color: $brown-hover;
+      }
     }
   }
 }
@@ -1617,7 +1706,7 @@ h6 {
   .clickable {
     border-radius: 5px;
     cursor: pointer;
-    height: 13rem;
+    height: 14rem;
     width: calc(25%);
     z-index: 10;
   }
@@ -2009,6 +2098,7 @@ abbr {
       cursor: pointer;
       margin-bottom: 0.25rem;
       transform: rotate(-90deg);
+      transition: transform 0.15s ease-in-out;
     }
   }
 
@@ -2155,11 +2245,13 @@ abbr {
 
   .state-meta {
     grid-column: 1 / -1;
+    left: 0;
+    position: sticky;
 
     .state-meta-top {
       align-items: center;
       display: flex;
-      flex-direction: row;
+      flex-direction: row-reverse;
       flex-wrap: wrap;
       justify-content: space-between;
       margin-bottom: 1 + 0.25rem;
@@ -2419,6 +2511,8 @@ abbr {
 
   .spacer-row {
     grid-column: 1 / -1;
+    left: 0;
+    position: sticky;
 
     .spacer {
       color: $gray-mid;
@@ -2530,7 +2624,6 @@ abbr {
 
 .MapExplorer {
   align-self: center;
-  margin-bottom: 3rem;
   position: relative;
   width: 100%;
 
@@ -2558,7 +2651,6 @@ abbr {
     &.maplegend {
       margin-top: 0.6rem;
       user-select: none;
-      width: 100%;
       z-index: 1;
     }
 
@@ -2570,7 +2662,6 @@ abbr {
 
       text {
         fill: $gray;
-        font-size: 10px;
         font-weight: 600;
         text-align: right;
       }
@@ -3710,7 +3801,7 @@ input {
   flex-direction: row;
   justify-content: space-between;
   margin: 0;
-  margin-bottom: 1rem;
+  margin-bottom: 2rem;
   margin-top: 1rem;
 
   .svg-parent {
@@ -4845,7 +4936,7 @@ footer {
 
   .VaccinationHeader {
     margin-bottom: 2rem;
-    margin-top: 2rem;
+    margin-top: 1rem;
   }
 
   .timeseries-header {
@@ -4871,6 +4962,13 @@ footer {
       .resource {
         width: calc(100% - 2rem);
       }
+    }
+  }
+
+  .MapSwitcher {
+    .highlight,
+    .clickable {
+      height: 13rem;
     }
   }
 }
@@ -5109,7 +5207,7 @@ footer {
     }
   }
 
-  .tpm {
+  .tpl {
     background: $dark-m-purple-light !important;
 
     h3,

@@ -5,7 +5,9 @@ import {
   DISTRICT_START_DATE,
   DISTRICT_TEST_END_DATE,
   MAP_VIEWS,
+  PRIMARY_STATISTICS,
   TESTED_EXPIRING_DAYS,
+  UNKNOWN_DISTRICT_KEY,
 } from '../constants';
 import useIsVisible from '../hooks/useIsVisible';
 import useStickySWR from '../hooks/useStickySWR';
@@ -90,22 +92,46 @@ function Home() {
   const hideVaccinated =
     getStatistic(data?.['TT'], 'total', 'vaccinated') === 0;
 
-  const lastUpdatedDate = useMemo(() => {
-    if (!data) {
-      return null;
-    }
-    // TODO: last_updated date might not be same as the last case date
+  const lastDataDate = useMemo(() => {
     const updatedDates = [
-      data['TT']?.meta?.['last_updated'] || date,
-      data['TT']?.meta?.tested?.['last_updated'],
-    ];
-    return formatISO(
-      max(
-        updatedDates.filter((date) => date).map((date) => parseIndiaDate(date))
-      ),
-      {representation: 'date'}
-    );
-  }, [data, date]);
+      data?.['TT']?.meta?.date,
+      data?.['TT']?.meta?.tested?.date,
+      data?.['TT']?.meta?.vaccinated?.date,
+    ].filter((date) => date);
+    return updatedDates.length > 0
+      ? formatISO(max(updatedDates.map((date) => parseIndiaDate(date))), {
+          representation: 'date',
+        })
+      : null;
+  }, [data]);
+
+  const noDistrictDataStates = useMemo(
+    () =>
+      // Heuristic: All cases are in Unknown
+      Object.entries(data || {}).reduce((res, [stateCode, stateData]) => {
+        res[stateCode] = !!(
+          stateData?.districts &&
+          stateData.districts?.[UNKNOWN_DISTRICT_KEY] &&
+          PRIMARY_STATISTICS.every(
+            (statistic) =>
+              getStatistic(stateData, 'total', statistic) ===
+              getStatistic(
+                stateData.districts[UNKNOWN_DISTRICT_KEY],
+                'total',
+                statistic
+              )
+          )
+        );
+        return res;
+      }, {}),
+    [data]
+  );
+
+  const noRegionHighlightedDistrictData =
+    regionHighlighted?.stateCode &&
+    regionHighlighted?.districtName &&
+    regionHighlighted.districtName !== UNKNOWN_DISTRICT_KEY &&
+    noDistrictDataStates[regionHighlighted.stateCode];
 
   return (
     <>
@@ -153,9 +179,9 @@ function Home() {
             )}
 
             <>
-              {!timeseries && <div style={{height: '107px'}} />}
+              {!timeseries && <div style={{height: '123px'}} />}
               {timeseries && (
-                <Suspense fallback={<div style={{height: '107px'}} />}>
+                <Suspense fallback={<div style={{height: '123px'}} />}>
                   <Minigraphs
                     timeseries={timeseries['TT']?.dates}
                     {...{date}}
@@ -179,7 +205,8 @@ function Home() {
                   hideDistrictData,
                   hideDistrictTestData,
                   hideVaccinated,
-                  lastUpdatedDate,
+                  lastDataDate,
+                  noDistrictDataStates,
                 }}
               />
             </Suspense>
@@ -216,10 +243,11 @@ function Home() {
                         anchor,
                         setAnchor,
                         expandTable,
-                        lastUpdatedDate,
+                        lastDataDate,
                         hideDistrictData,
                         hideDistrictTestData,
                         hideVaccinated,
+                        noRegionHighlightedDistrictData,
                       }}
                     />
                   </Suspense>
@@ -239,6 +267,7 @@ function Home() {
                       setAnchor,
                       expandTable,
                       hideVaccinated,
+                      noRegionHighlightedDistrictData,
                     }}
                   />
                 </Suspense>

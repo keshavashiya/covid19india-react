@@ -10,7 +10,7 @@ import {
   STATE_NAMES,
   STATISTIC_CONFIGS,
   TABLE_STATISTICS,
-  TABLE_STATISTICS_ALL,
+  TABLE_STATISTICS_EXPANDED,
   UNASSIGNED_STATE_CODE,
 } from '../constants';
 import {getStatistic, retry} from '../utils/commonFunctions';
@@ -38,7 +38,7 @@ import {
 import {useTranslation} from 'react-i18next';
 import {Link} from 'react-router-dom';
 import {useTrail, useTransition, animated, config} from 'react-spring';
-import {useKeyPressEvent, useSessionStorage} from 'react-use';
+import {useKeyPressEvent, useMeasure, useSessionStorage} from 'react-use';
 // eslint-disable-next-line
 import worker from 'workerize-loader!../workers/getDistricts';
 
@@ -54,7 +54,8 @@ function Table({
   hideDistrictData,
   hideDistrictTestData,
   hideVaccinated,
-  lastUpdatedDate,
+  lastDataDate,
+  noDistrictDataStates,
 }) {
   const {t} = useTranslation();
   const [sortData, setSortData] = useSessionStorage('sortData', {
@@ -64,6 +65,8 @@ function Table({
   });
   const [page, setPage] = useState(0);
   const [delta7Mode, setDelta7Mode] = useState(false);
+
+  const [tableContainerRef, {width: tableWidth}] = useMeasure();
 
   const handleSortClick = useCallback(
     (statistic) => {
@@ -105,8 +108,8 @@ function Table({
   const getTableStatistic = useCallback(
     (data, statistic, type) => {
       const statisticConfig = STATISTIC_CONFIGS[statistic];
-      if (statisticConfig?.tableConfig?.type && type == 'total') {
-        type = statisticConfig.tableConfig.type;
+      if (type == 'total' && statisticConfig?.onlyDelta7) {
+        type = 'delta7';
       }
 
       if (statisticConfig?.showDelta && type === 'total' && delta7Mode) {
@@ -114,11 +117,11 @@ function Table({
       }
 
       return getStatistic(data, type, statistic, {
-        expiredDate: lastUpdatedDate,
+        expiredDate: lastDataDate,
         normalizedByPopulationPer: isPerLakh ? 'lakh' : null,
       });
     },
-    [isPerLakh, lastUpdatedDate, delta7Mode]
+    [isPerLakh, lastDataDate, delta7Mode]
   );
 
   const districts = useMemo(() => {
@@ -219,7 +222,7 @@ function Table({
   });
 
   const tableStatistics = (
-    expandTable ? TABLE_STATISTICS_ALL : TABLE_STATISTICS
+    expandTable ? TABLE_STATISTICS_EXPANDED : TABLE_STATISTICS
   ).filter(
     (statistic) =>
       (tableOption === 'States' ||
@@ -232,7 +235,9 @@ function Table({
   const showDistricts = tableOption === 'Districts' && !hideDistrictData;
 
   useEffect(() => {
-    if (!showDistricts) setPage(0);
+    if (!showDistricts) {
+      setPage(0);
+    }
   }, [showDistricts]);
 
   useKeyPressEvent('?', () => {
@@ -383,7 +388,7 @@ function Table({
           )
       )}
 
-      <div className="table-container">
+      <div className="table-container" ref={tableContainerRef}>
         <div
           className="table fadeInUp"
           style={{
@@ -433,6 +438,7 @@ function Table({
                   <Row
                     key={stateCode}
                     data={states[stateCode]}
+                    noDistrictData={noDistrictDataStates[stateCode]}
                     {...{
                       stateCode,
                       regionHighlighted,
@@ -440,6 +446,7 @@ function Table({
                       expandTable,
                       tableStatistics,
                       getTableStatistic,
+                      tableWidth,
                     }}
                   />
                 );
@@ -456,6 +463,8 @@ function Table({
                 (page + 1) * DISTRICT_TABLE_COUNT
               )
               .map((districtKey) => {
+                const noDistrictData =
+                  noDistrictDataStates[districts[districtKey].stateCode];
                 return (
                   <Row
                     key={districtKey}
@@ -467,6 +476,7 @@ function Table({
                       expandTable,
                       tableStatistics,
                       getTableStatistic,
+                      noDistrictData,
                     }}
                   />
                 );
@@ -546,11 +556,17 @@ const isEqual = (prevProps, currProps) => {
     return false;
   } else if (!equal(prevProps.expandTable, currProps.expandTable)) {
     return false;
+  } else if (!equal(prevProps.lastDataDate, currProps.lastDataDate)) {
+    return false;
   } else if (
     !equal(
       prevProps.data['TT'].total.confirmed,
       currProps.data['TT'].total.confirmed
     )
+  ) {
+    return false;
+  } else if (
+    !equal(prevProps.noDistrictDataStates, currProps.noDistrictDataStates)
   ) {
     return false;
   } else return true;
